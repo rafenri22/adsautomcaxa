@@ -44,88 +44,228 @@ function getCycleSpecificIndex(globalIndex, cycle, profilesPerCycle) {
 	return ((globalIndex - 1) % profilesPerCycle) + 1;
 }
 
-// Function to simulate random clicks on the page
-async function simulateRandomClicks(page, profileIndex, duration = 10) {
+// Enhanced ad clicking function with aggressive detection and clicking
+async function clickAdsAggressively(page, profileIndex, duration = 15) {
 	if (!page || page.isClosed()) return;
 	
-	log(`🖱️ Starting random click simulation for ${duration}s`, profileIndex);
+	log(`🎯 Starting aggressive ad detection and clicking for ${duration}s`, profileIndex);
 	
 	try {
-		// Wait for page to be fully interactive
-		await page.waitForLoadState('networkidle', { timeout: 30000 });
-		
 		const endTime = Date.now() + (duration * 1000);
 		let clickCount = 0;
+		let adClickCount = 0;
 		
 		while (Date.now() < endTime && !page.isClosed()) {
 			try {
-				// Get clickable elements (avoid ads for now to prevent redirects)
-				const clickableElements = await page.evaluate(() => {
+				// Comprehensive ad selectors including the specific ones mentioned
+				const adSelectors = [
+					// General ad selectors
+					'.ads', '.ad', '.advertisement', '.google-ad', '.adsense',
+					'[class*="ad-"]', '[id*="ad-"]', '[class*="ads-"]', '[id*="ads-"]',
+					'ins.adsbygoogle', '.adsbygoogle',
+					'[class*="banner"]', '[id*="banner"]', '.sponsor', '.sponsored',
+					'[data-ad]', '[data-ads]', '.ad-container', '.ads-container',
+					
+					// Specific ad network selectors
+					'[src*="profitableratecpm.com"]',
+					'[src*="highperformanceformat.com"]',
+					'[data-key*="dac5bd782390c09ca3783e4361641fe1"]',
+					'[data-key*="bed062db9e271d1ad41b99f36e2c623c"]',
+					
+					// Common ad iframe selectors
+					'iframe[src*="doubleclick"]', 
+					'iframe[src*="googlesyndication"]',
+					'iframe[src*="googletagmanager"]',
+					'iframe[src*="profitableratecpm"]',
+					'iframe[src*="highperformanceformat"]',
+					
+					// Banner size specific
+					'[width="320"][height="50"]',
+					'[style*="width: 320px"][style*="height: 50px"]',
+					'.banner-320x50', '#banner-320x50',
+					
+					// Social bar and popunder elements
+					'[class*="social-bar"]', '[id*="social-bar"]',
+					'[class*="popunder"]', '[id*="popunder"]'
+				];
+				
+				// Search for clickable ad elements
+				const clickableAds = await page.evaluate((selectors) => {
 					const elements = [];
-					const selectors = [
-						'p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-						'article', 'section', 'main', 'aside', 'header', 'footer'
-					];
 					
 					selectors.forEach(selector => {
-						const found = document.querySelectorAll(selector);
-						found.forEach(el => {
-							const rect = el.getBoundingClientRect();
-							const style = window.getComputedStyle(el);
-							if (rect.width > 50 && rect.height > 20 && 
-								style.display !== 'none' && 
-								style.visibility !== 'hidden' &&
-								rect.top >= 0 && rect.top <= window.innerHeight) {
-								elements.push({
-									x: rect.left + rect.width / 2,
-									y: rect.top + rect.height / 2,
-									width: rect.width,
-									height: rect.height
-								});
-							}
-						});
+						try {
+							const found = document.querySelectorAll(selector);
+							found.forEach(el => {
+								const rect = el.getBoundingClientRect();
+								const style = window.getComputedStyle(el);
+								const isClickable = el.tagName === 'A' || el.onclick || el.style.cursor === 'pointer' || 
+												  el.getAttribute('onclick') || el.getAttribute('href');
+								
+								if (rect.width > 20 && rect.height > 20 && 
+									style.display !== 'none' && 
+									style.visibility !== 'hidden' &&
+									style.opacity !== '0' &&
+									rect.top >= -100 && rect.top <= window.innerHeight + 100) {
+									elements.push({
+										selector: selector,
+										x: rect.left + rect.width / 2,
+										y: rect.top + rect.height / 2,
+										width: rect.width,
+										height: rect.height,
+										isClickable: isClickable,
+										tagName: el.tagName,
+										href: el.href || null,
+										onclick: el.onclick ? true : false
+									});
+								}
+							});
+						} catch (e) {
+							// Continue with next selector
+						}
 					});
 					return elements;
+				}, adSelectors);
+				
+				// Also search for any links that might be ad links
+				const adLinks = await page.evaluate(() => {
+					const links = Array.from(document.querySelectorAll('a[href*="profitableratecpm"], a[href*="highperformanceformat"], a[href*="cpm"], a[href*="ads"], a[href*="click"]'));
+					return links.map(link => {
+						const rect = link.getBoundingClientRect();
+						if (rect.width > 10 && rect.height > 10 && rect.top >= 0 && rect.top <= window.innerHeight) {
+							return {
+								x: rect.left + rect.width / 2,
+								y: rect.top + rect.height / 2,
+								width: rect.width,
+								height: rect.height,
+								href: link.href,
+								text: link.textContent.trim().substring(0, 50)
+							};
+						}
+						return null;
+					}).filter(Boolean);
 				});
 				
-				if (clickableElements.length > 0) {
-					const randomElement = clickableElements[Math.floor(Math.random() * clickableElements.length)];
+				const allPotentialAds = [...clickableAds, ...adLinks];
+				
+				if (allPotentialAds.length > 0) {
+					log(`🎯 Found ${allPotentialAds.length} potential ad elements`, profileIndex);
 					
-					// Add some randomization to click position
-					const x = randomElement.x + (Math.random() * 20 - 10);
-					const y = randomElement.y + (Math.random() * 20 - 10);
-					
-					// Move mouse to position smoothly
-					await page.mouse.move(x, y, { steps: 5 + Math.random() * 10 });
-					await page.waitForTimeout(200 + Math.random() * 500);
-					
-					// Random chance to actually click
-					if (Math.random() < 0.3) {
-						await page.mouse.click(x, y);
-						clickCount++;
-						log(`🎯 Clicked at (${Math.round(x)}, ${Math.round(y)}) - Click #${clickCount}`, profileIndex);
+					// Click on ads with high priority
+					for (const ad of allPotentialAds.slice(0, 3)) {
+						if (!page || page.isClosed()) break;
 						
-						// Wait a bit after clicking
-						await page.waitForTimeout(1000 + Math.random() * 2000);
-					} else {
-						log(`👆 Hovered at (${Math.round(x)}, ${Math.round(y)})`, profileIndex);
-						await page.waitForTimeout(500 + Math.random() * 1000);
+						try {
+							// Scroll to ad if needed
+							await page.evaluate((x, y) => {
+								if (y < 0 || y > window.innerHeight) {
+									window.scrollTo({
+										top: window.scrollY + y - window.innerHeight / 2,
+										behavior: 'smooth'
+									});
+								}
+							}, ad.x, ad.y);
+							
+							await page.waitForTimeout(1000 + Math.random() * 1500);
+							
+							// Add some randomization to click position
+							const clickX = ad.x + (Math.random() * 10 - 5);
+							const clickY = ad.y + (Math.random() * 10 - 5);
+							
+							// Move mouse to position smoothly
+							await page.mouse.move(clickX, clickY, { steps: 8 + Math.random() * 12 });
+							await page.waitForTimeout(500 + Math.random() * 1000);
+							
+							log(`🖱️ Clicking ad at (${Math.round(clickX)}, ${Math.round(clickY)}) - ${ad.href || ad.selector}`, profileIndex);
+							
+							// Handle potential popups/new tabs before clicking
+							const currentPages = await page.context().pages();
+							
+							// Click the ad
+							await page.mouse.click(clickX, clickY);
+							adClickCount++;
+							clickCount++;
+							
+							// Wait a bit to see if new tab/popup opened
+							await page.waitForTimeout(2000);
+							
+							// Check for new pages/popups
+							const newPages = await page.context().pages();
+							if (newPages.length > currentPages.length) {
+								log(`🆕 New tab/popup opened from ad click`, profileIndex);
+								// Close any new tabs after a short delay (to register the click)
+								for (let i = currentPages.length; i < newPages.length; i++) {
+									const newPage = newPages[i];
+									await page.waitForTimeout(3000 + Math.random() * 2000);
+									try {
+										await newPage.close();
+										log(`❌ Closed popup/new tab`, profileIndex);
+									} catch (e) {
+										log(`⚠️ Could not close popup: ${e.message}`, profileIndex);
+									}
+								}
+							}
+							
+							// Wait before next ad click
+							await page.waitForTimeout(3000 + Math.random() * 5000);
+							
+						} catch (clickError) {
+							log(`⚠️ Error clicking ad: ${clickError.message}`, profileIndex);
+						}
 					}
 				}
 				
-				// Random pause between actions
-				await page.waitForTimeout(2000 + Math.random() * 3000);
+				// Also look for and click regular content occasionally for natural behavior
+				if (Math.random() < 0.3) {
+					const regularElements = await page.evaluate(() => {
+						const elements = [];
+						const selectors = ['p', 'h1', 'h2', 'h3', 'span', 'div[role="button"]', 'button'];
+						
+						selectors.forEach(selector => {
+							const found = document.querySelectorAll(selector);
+							found.forEach(el => {
+								const rect = el.getBoundingClientRect();
+								if (rect.width > 50 && rect.height > 20 && 
+									rect.top >= 0 && rect.top <= window.innerHeight) {
+									elements.push({
+										x: rect.left + rect.width / 2,
+										y: rect.top + rect.height / 2,
+									});
+								}
+							});
+						});
+						return elements.slice(0, 5);
+					});
+					
+					if (regularElements.length > 0) {
+						const element = regularElements[Math.floor(Math.random() * regularElements.length)];
+						const clickX = element.x + (Math.random() * 20 - 10);
+						const clickY = element.y + (Math.random() * 20 - 10);
+						
+						await page.mouse.move(clickX, clickY, { steps: 5 });
+						await page.waitForTimeout(200 + Math.random() * 500);
+						
+						if (Math.random() < 0.4) {
+							await page.mouse.click(clickX, clickY);
+							clickCount++;
+							log(`🎯 Clicked regular content at (${Math.round(clickX)}, ${Math.round(clickY)})`, profileIndex);
+						}
+					}
+				}
 				
-			} catch (clickError) {
-				log(`⚠️ Click simulation error: ${clickError.message}`, profileIndex);
-				await page.waitForTimeout(1000);
+				// Random pause between detection cycles
+				await page.waitForTimeout(4000 + Math.random() * 6000);
+				
+			} catch (detectionError) {
+				log(`⚠️ Error in ad detection cycle: ${detectionError.message}`, profileIndex);
+				await page.waitForTimeout(2000);
 			}
 		}
 		
-		log(`✅ Click simulation completed - ${clickCount} clicks made`, profileIndex);
+		log(`✅ Ad clicking completed - ${adClickCount} ads clicked, ${clickCount} total clicks`, profileIndex);
 		
 	} catch (error) {
-		log(`❌ Random click simulation failed: ${error.message}`, profileIndex);
+		log(`❌ Ad clicking simulation failed: ${error.message}`, profileIndex);
 	}
 }
 
@@ -136,62 +276,46 @@ async function waitForCompletePageLoad(page, profileIndex, timeout = 45) {
 	log(`⏳ Waiting for complete page load (${timeout}s timeout)...`, profileIndex);
 	
 	try {
-		// Wait for network to be idle
-		await page.waitForLoadState('networkidle', { timeout: timeout * 1000 });
-		log(`✅ Network idle achieved`, profileIndex);
+		// Wait for network to be idle first
+		await page.waitForLoadState('domcontentloaded', { timeout: timeout * 1000 });
+		log(`📄 DOM content loaded`, profileIndex);
 		
-		// Additional wait for dynamic content and ads
+		// Wait a bit more for dynamic content
 		await page.waitForTimeout(3000);
 		
-		// Check if common ad containers are present and try to load them
+		// Wait for network to be mostly idle
+		await page.waitForLoadState('networkidle', { timeout: (timeout - 10) * 1000 });
+		log(`📡 Network activity settled`, profileIndex);
+		
+		// Additional wait for ads and dynamic content to load
+		await page.waitForTimeout(5000);
+		
+		// Try to execute JavaScript to ensure the page is interactive
 		await page.evaluate(() => {
 			return new Promise((resolve) => {
-				// Common ad container selectors
-				const adSelectors = [
-					'.ads', '.ad', '.advertisement', '.google-ad',
-					'[class*="ad-"]', '[id*="ad-"]', '[class*="ads-"]', '[id*="ads-"]',
-					'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
-					'ins.adsbygoogle', '.adsbygoogle'
-				];
+				// Check if ads are loading
+				const checkAdsLoaded = () => {
+					const adElements = document.querySelectorAll('.ad, .ads, .advertisement, iframe[src*="ads"], script[src*="ads"]');
+					console.log(`Found ${adElements.length} ad elements`);
+					resolve(true);
+				};
 				
-				let loadedAds = 0;
-				let totalAds = 0;
-				
-				adSelectors.forEach(selector => {
-					const elements = document.querySelectorAll(selector);
-					totalAds += elements.length;
-					
-					elements.forEach(el => {
-						if (el.offsetHeight > 0 && el.offsetWidth > 0) {
-							loadedAds++;
-						}
+				if (document.readyState === 'complete') {
+					setTimeout(checkAdsLoaded, 2000);
+				} else {
+					window.addEventListener('load', () => {
+						setTimeout(checkAdsLoaded, 2000);
 					});
-				});
-				
-				console.log(`Found ${totalAds} ad elements, ${loadedAds} visible`);
-				
-				// Wait a bit more for ads to load
-				setTimeout(resolve, 2000);
+				}
 			});
 		});
 		
-		// Check page readiness
-		const isReady = await page.evaluate(() => {
-			return document.readyState === 'complete' && 
-				   window.jQuery ? window.jQuery.active === 0 : true;
-		});
-		
-		if (isReady) {
-			log(`✅ Page fully loaded with all resources`, profileIndex);
-			return true;
-		} else {
-			log(`⚠️ Page may not be fully loaded`, profileIndex);
-			return true; // Continue anyway
-		}
+		log(`✅ Page fully loaded with ads and dynamic content`, profileIndex);
+		return true;
 		
 	} catch (loadError) {
-		log(`⚠️ Page load timeout or error: ${loadError.message}`, profileIndex);
-		return true; // Continue even if timeout
+		log(`⚠️ Page load timeout: ${loadError.message}`, profileIndex);
+		return true; // Continue anyway
 	}
 }
 
@@ -199,7 +323,7 @@ async function waitForCompletePageLoad(page, profileIndex, timeout = 45) {
 async function processWindow(
 	windowIndex,
 	browser,
-	combinedURL,
+	targetURL, // Direct URL without proxy for better loading
 	proxyURL,
 	waitTime,
 	cycle,
@@ -260,11 +384,11 @@ async function processWindow(
 			return;
 		}
 
-		// Launch browser with human-like configuration
+		// Launch browser with enhanced configuration for better website loading
 		try {
 			log(`🌐 Launching ${browserChoice.name} browser for Profile ${cycleSpecificIndex}`, windowIndex);
 			
-			// Human-like browser arguments - allow ads and full rendering
+			// Enhanced browser arguments for better website loading
 			const browserArgs = [
 				'--no-first-run',
 				'--no-default-browser-check',
@@ -277,7 +401,7 @@ async function processWindow(
 				'--disable-field-trial-config',
 				'--disable-hang-monitor',
 				'--disable-ipc-flooding-protection',
-				'--disable-popup-blocking', // Allow popups (important for some ads)
+				'--disable-popup-blocking',
 				'--disable-prompt-on-repost',
 				'--disable-sync',
 				'--metrics-recording-only',
@@ -286,33 +410,33 @@ async function processWindow(
 				'--enable-automation',
 				'--password-store=basic',
 				'--use-mock-keychain',
-				// Enable hardware acceleration and GPU for better rendering
+				// Enable all content loading
+				'--disable-web-security',
+				'--disable-features=TranslateUI',
+				'--allow-running-insecure-content',
+				'--disable-site-isolation-trials',
+				'--disable-cross-origin-restrictions',
+				// Allow all resources and scripts
+				'--enable-javascript',
+				'--enable-plugins',
+				'--allow-outdated-plugins',
+				// GPU and rendering
 				'--enable-gpu',
 				'--enable-accelerated-2d-canvas',
 				'--enable-accelerated-jpeg-decoding',
 				'--enable-accelerated-mjpeg-decode',
 				'--enable-accelerated-video-decode',
-				// Allow all content including ads
-				'--disable-web-security', // Allow cross-origin requests
-				'--disable-features=TranslateUI',
-				'--disable-extensions',
-				'--allow-running-insecure-content',
-				// Performance optimizations
 				'--max_old_space_size=4096',
-				// Allow geolocation and notifications
-				'--use-fake-ui-for-media-stream',
-				'--use-fake-device-for-media-stream',
-				// Make it look more human
 				'--disable-dev-shm-usage',
-				'--disable-software-rasterizer',
+				'--disable-software-rasterizer'
 			];
 
 			browserInstance = await browserChoice.launcher.launch({
 				headless: false,
 				args: browserArgs,
-				ignoreDefaultArgs: ['--enable-automation'], // Remove automation flags
-				executablePath: undefined, // Use default
-				slowMo: 50 + Math.random() * 100 // Add slight delay to actions
+				ignoreDefaultArgs: ['--enable-automation'],
+				executablePath: undefined,
+				slowMo: 50 + Math.random() * 100
 			});
 			
 			log(`✅ Browser launched successfully for Profile ${cycleSpecificIndex}`, windowIndex);
@@ -323,23 +447,10 @@ async function processWindow(
 			return;
 		}
 
-		// Check if stop was requested after browser launch
-		if (shouldStop) {
-			log(`⏹️ Stopping Profile ${cycleSpecificIndex} - automation stopped`, windowIndex);
-			try {
-				await browserInstance.close();
-			} catch (e) {
-				log(`⚠️ Error closing browser: ${e.message}`, windowIndex);
-			}
-			updateProfileStatus(windowIndex, 'failed');
-			failedWindows++;
-			return;
-		}
-
 		// Add to active browsers for stop functionality
 		activeBrowsers.push(browserInstance);
 
-		// Create browser context with comprehensive settings
+		// Create browser context with enhanced settings for better loading
 		try {
 			const contextOptions = {
 				userAgent: fingerprint.userAgent,
@@ -349,26 +460,34 @@ async function processWindow(
 				deviceScaleFactor: fingerprint.deviceScaleFactor || 1,
 				isMobile: fingerprint.isMobile || false,
 				hasTouch: fingerprint.hasTouch || false,
-				// Enable all permissions to look human
-				permissions: ['geolocation', 'notifications'],
-				geolocation: fingerprint.geolocation || { latitude: 40.7128, longitude: -74.0060 }, // NYC default
-				// Accept all cookies
+				permissions: ['geolocation', 'notifications', 'camera', 'microphone'],
+				geolocation: fingerprint.geolocation || { latitude: 40.7128, longitude: -74.0060 },
 				acceptDownloads: true,
-				// Enable JavaScript
 				javaScriptEnabled: true,
-				// Extra HTTP headers
 				extraHTTPHeaders: {
 					'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
 					'Accept-Language': fingerprint.browserLanguages.join(',') + ';q=0.9',
 					'Accept-Encoding': 'gzip, deflate, br',
-					'Cache-Control': 'max-age=0',
+					'Cache-Control': 'no-cache',
+					'Pragma': 'no-cache',
 					'Sec-Fetch-Dest': 'document',
 					'Sec-Fetch-Mode': 'navigate',
 					'Sec-Fetch-Site': 'none',
 					'Sec-Fetch-User': '?1',
-					'Upgrade-Insecure-Requests': '1',
+					'Upgrade-Insecure-Requests': '1'
 				}
 			};
+			
+			// Use proxy if needed but configure it properly
+			if (proxyURL && !proxyURL.includes('api.scrape.do')) {
+				// Only use direct proxy, not scraping service
+				const proxyMatch = proxyURL.match(/http:\/\/([^:]+):(\d+)/);
+				if (proxyMatch) {
+					contextOptions.proxy = {
+						server: proxyURL,
+					};
+				}
+			}
 			
 			context = await browserInstance.newContext(contextOptions);
 			log(`📄 Browser context created for Profile ${cycleSpecificIndex}`, windowIndex);
@@ -379,21 +498,10 @@ async function processWindow(
 			return;
 		}
 
-		// Check if stop was requested after context creation
-		if (shouldStop) {
-			log(`⏹️ Stopping Profile ${cycleSpecificIndex} - automation stopped`, windowIndex);
-			updateProfileStatus(windowIndex, 'failed');
-			failedWindows++;
-			return;
-		}
-
 		// Create new page
 		try {
 			page = await context.newPage();
-			
-			// Set additional page properties
 			await page.setViewportSize(fingerprint.screen);
-			
 			log(`📃 New page created for Profile ${cycleSpecificIndex}`, windowIndex);
 		} catch (pageError) {
 			log(`❌ Page creation failed for Profile ${cycleSpecificIndex}: ${pageError.message}`, windowIndex);
@@ -410,9 +518,8 @@ async function processWindow(
 			log(`⚠️ Fingerprint injection failed for Profile ${cycleSpecificIndex}: ${injectError.message}`, windowIndex);
 		}
 
-		// Navigate to the page with comprehensive error handling
+		// Navigate to the page directly (without proxy for better loading)
 		try {
-			// Check if stop was requested before starting navigation
 			if (shouldStop) {
 				log(`⏹️ Stopping Profile ${cycleSpecificIndex} - automation stopped`, windowIndex);
 				updateProfileStatus(windowIndex, 'failed');
@@ -420,23 +527,21 @@ async function processWindow(
 				return;
 			}
 
-			log(`🌐 Loading website for Profile ${cycleSpecificIndex}: ${combinedURL}`, windowIndex);
+			log(`🌐 Loading website directly for better performance: ${targetURL}`, windowIndex);
 
-			// Navigate with extended timeout for full loading
-			await page.goto(combinedURL, {
+			// Navigate directly to target URL for full CSS/JS loading
+			await page.goto(targetURL, {
 				waitUntil: 'domcontentloaded',
-				timeout: (timeout + 15) * 1000 // Extended timeout
+				timeout: (timeout + 15) * 1000
 			});
 
 			log(`✅ Initial page load completed for Profile ${cycleSpecificIndex}`, windowIndex);
 
 			// Wait for complete page load including all resources and ads
-			const loadSuccess = await waitForCompletePageLoad(page, windowIndex, 30);
+			const loadSuccess = await waitForCompletePageLoad(page, windowIndex, 35);
 			
 			if (loadSuccess) {
-				log(`🎉 Website fully loaded for Profile ${cycleSpecificIndex}`, windowIndex);
-			} else {
-				log(`⚠️ Website loaded with warnings for Profile ${cycleSpecificIndex}`, windowIndex);
+				log(`🎉 Website fully loaded with all resources for Profile ${cycleSpecificIndex}`, windowIndex);
 			}
 
 		} catch (navError) {
@@ -509,10 +614,10 @@ async function processWindow(
 			}
 		}, waitTime * 1000);
 
-		// Calculate time distribution
+		// Calculate time distribution with more focus on ad clicking
 		let remainingTime = waitTime;
-		let clickTime = Math.min(10, remainingTime * 0.3); // 30% for clicking, max 10s
-		let scrollTime = remainingTime - clickTime - 5; // Leave 5s buffer
+		let adClickTime = Math.min(15, remainingTime * 0.4); // 40% for ad clicking, max 15s
+		let scrollTime = remainingTime - adClickTime - 5; // Leave 5s buffer
 		
 		if (remainingTime > 15) {
 			log(`⏳ Waiting 5s before starting interactions...`, windowIndex);
@@ -520,19 +625,19 @@ async function processWindow(
 			remainingTime -= 5;
 		}
 
-		// Phase 1: Random clicking and interaction
-		if (clickTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
-			log(`🎯 Phase 1: Random clicking for ${clickTime}s`, windowIndex);
+		// Phase 1: Aggressive ad clicking
+		if (adClickTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
+			log(`🎯 Phase 1: Aggressive ad detection and clicking for ${adClickTime}s`, windowIndex);
 			try {
-				await simulateRandomClicks(page, windowIndex, clickTime);
-			} catch (clickError) {
-				log(`⚠️ Click simulation error: ${clickError.message}`, windowIndex);
+				await clickAdsAggressively(page, windowIndex, adClickTime);
+			} catch (adError) {
+				log(`⚠️ Ad clicking error: ${adError.message}`, windowIndex);
 			}
 		}
 
-		// Phase 2: Scroll simulation
+		// Phase 2: Scroll simulation with continued ad awareness
 		if (scrollTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
-			log(`📜 Phase 2: Scroll simulation for ${scrollTime}s`, windowIndex);
+			log(`📜 Phase 2: Scroll with ad awareness for ${scrollTime}s`, windowIndex);
 			try {
 				await simulateHumanScroll(page, scrollTime, windowIndex, strictTimeoutId);
 			} catch (scrollError) {
@@ -623,7 +728,7 @@ async function runAutomation(config) {
 			maxWaitTime = 55
 		} = config;
 
-		log('🚀 Starting enhanced automation with config:', null);
+		log('🚀 Starting enhanced automation with aggressive ad clicking:', null);
 		log(`   URL: ${url}`, null);
 		log(`   Proxy: ${proxyURL}`, null);
 		log(`   Browser: ${browser}`, null);
@@ -631,6 +736,16 @@ async function runAutomation(config) {
 		log(`   Profiles per cycle: ${profilesAtOnce}`, null);
 		log(`   Timeout: ${timeout}s`, null);
 		log(`   Wait time: ${minWaitTime}-${maxWaitTime}s`, null);
+
+		// Extract target URL from proxy URL if needed
+		let targetURL = url;
+		if (url.includes('api.scrape.do') && url.includes('url=')) {
+			const urlMatch = url.match(/url=([^&]+)/);
+			if (urlMatch) {
+				targetURL = decodeURIComponent(urlMatch[1]);
+				log(`🎯 Extracted target URL: ${targetURL}`, null);
+			}
+		}
 
 		// Clear previous profile logs
 		clearProfileLogs();
@@ -665,7 +780,7 @@ async function runAutomation(config) {
 			// Clear logs from previous cycle to start fresh
 			clearProfileLogs();
 
-			log(`🔄 Starting Cycle ${cycle}/${totalCycles}`);
+			log(`🔄 Starting Cycle ${cycle}/${totalCycles} with aggressive ad clicking`);
 
 			// Create promises for all profiles in this cycle
 			const waitTimes = getRandomWaitTimes(profilesPerCycle, minWaitTime, maxWaitTime);
@@ -676,8 +791,8 @@ async function runAutomation(config) {
 				processWindow(
 					(cycle - 1) * profilesPerCycle + i + 1,
 					browser,
-					url,
-					proxyURL,
+					targetURL, // Use direct URL
+					proxyURL,  // Keep proxy info for fingerprinting
 					waitTimes[i],
 					cycle,
 					timeout
@@ -692,7 +807,7 @@ async function runAutomation(config) {
 				break;
 			}
 
-			log(`✅ Cycle ${cycle} completed`);
+			log(`✅ Cycle ${cycle} completed with ad interactions`);
 
 			// Small delay between cycles (except for the last cycle)
 			if (cycle < totalCycles && !shouldStop) {
@@ -704,7 +819,7 @@ async function runAutomation(config) {
 		if (shouldStop) {
 			log(`🛑 Automation stopped by user request`);
 		} else {
-			log(`🎉 All ${totalCycles} cycles completed successfully!`);
+			log(`🎉 All ${totalCycles} cycles completed with aggressive ad clicking!`);
 		}
 
 		// Reset automation state

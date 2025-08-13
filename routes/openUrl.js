@@ -90,14 +90,31 @@ router.post('/', async (req, res) => {
 			});
 		}
 
-		const combinedURL = ProxyURL + encodeURIComponent(blogURL);
-		console.log('🔗 Combined URL:', combinedURL);
+		// For better website loading, we'll handle proxy differently
+		// If using scrape.do proxy, we'll extract the target URL and use it directly
+		let targetURL = blogURL;
+		let finalURL = blogURL;
+
+		if (ProxyURL.includes('api.scrape.do')) {
+			// Use the combination for scrape.do but extract target for direct access
+			finalURL = ProxyURL + encodeURIComponent(blogURL);
+			targetURL = blogURL; // Keep original URL for direct access
+			console.log('🔗 Using scrape.do proxy configuration');
+		} else {
+			// Regular proxy setup
+			finalURL = blogURL;
+			targetURL = blogURL;
+		}
+
+		console.log('🎯 Target URL for direct access:', targetURL);
+		console.log('🔗 Proxy URL for reference:', finalURL);
 
 		// Send initial response
 		res.json({
 			success: true,
 			started: true,
-			url: combinedURL,
+			targetURL: targetURL,
+			proxyURL: ProxyURL,
 			cycles,
 			profiles,
 			timeout: pageTimeout,
@@ -105,11 +122,11 @@ router.post('/', async (req, res) => {
 			maxWait
 		});
 
-		// Run automation in background with comprehensive error handling
-		console.log('🚀 Starting automation in background...');
+		// Run automation in background with enhanced ad clicking
+		console.log('🚀 Starting automation with aggressive ad clicking...');
 		
 		runAutomation({
-			url: combinedURL,
+			url: finalURL, // This will be parsed in the automation
 			proxyURL: ProxyURL,
 			browser,
 			openCount: cycles,
@@ -122,7 +139,7 @@ router.post('/', async (req, res) => {
 			console.error('Stack trace:', err.stack);
 		});
 
-		console.log('✅ Automation started successfully');
+		console.log('✅ Automation started successfully with enhanced ad clicking capabilities');
 
 	} catch (error) {
 		console.error('💥 Route error:', error);

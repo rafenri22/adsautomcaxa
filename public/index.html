@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Automation Controller</title>
+		<title>Automation Controller - Enhanced Ad Clicking</title>
 		<style>
 			body {
 				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -52,6 +52,14 @@
 				font-size: 2.5em;
 				font-weight: 300;
 				text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+			}
+
+			.subtitle {
+				text-align: center;
+				color: #ff9800;
+				font-size: 1.2em;
+				margin-bottom: 20px;
+				font-weight: 500;
 			}
 
 			label {
@@ -159,6 +167,32 @@
 			#blogURL,
 			#ProxyURL {
 				color: #00ffd2;
+			}
+
+			/* Ad targeting info */
+			.ad-info {
+				background: rgba(255, 152, 0, 0.1);
+				border: 1px solid rgba(255, 152, 0, 0.3);
+				border-radius: 10px;
+				padding: 15px;
+				margin: 20px 0;
+			}
+
+			.ad-info h3 {
+				color: #ff9800;
+				margin-top: 0;
+				font-size: 1.2em;
+			}
+
+			.ad-info ul {
+				margin: 10px 0;
+				padding-left: 20px;
+			}
+
+			.ad-info li {
+				color: #ffffff;
+				margin: 5px 0;
+				font-size: 13px;
 			}
 
 			/* Profile logs styles */
@@ -656,11 +690,25 @@
 	</head>
 	<body>
 		<div class="main-container">
-			<h2>🧠 Automation Control Panel</h2>
+			<h2>🧠 Enhanced Automation Control Panel</h2>
+			<div class="subtitle">🎯 Aggressive Ad Clicking & Full Website Loading</div>
 
 			<div class="form-container">
+				<div class="ad-info">
+					<h3>🎯 Advanced Ad Targeting Features</h3>
+					<ul>
+						<li>✅ Aggressive detection and clicking of all ad formats</li>
+						<li>✅ Support for ProfitablerateCPM and HighPerformanceFormat ads</li>
+						<li>✅ Banner ads (320x50, social bars, popunders)</li>
+						<li>✅ Direct link ads and iframe ads</li>
+						<li>✅ Full CSS/JavaScript loading for proper website display</li>
+						<li>✅ Automatic popup/new tab handling</li>
+						<li>✅ Human-like clicking patterns with realistic delays</li>
+					</ul>
+				</div>
+
 				<form id="automationForm">
-					<label for="blogURL">Blog URL:</label>
+					<label for="blogURL">Target Website URL:</label>
 					<input
 						type="text"
 						name="blogURL"
@@ -668,17 +716,18 @@
 						value="https://trijayaagunglestari.web.id"
 						required
 					/>
+					<small>The website will be loaded directly with full CSS/JS for better ad detection</small>
 
-					<label for="ProxyURL">Proxy URL:</label>
+					<label for="ProxyURL">Proxy URL (Optional):</label>
 					<input
 						type="text"
 						name="ProxyURL"
 						id="ProxyURL"
 						value="http://api.scrape.do?token=17816104c7834853af9ebdae785d3a756ce15798bcc&url="
-						required
 					/>
+					<small>Proxy will be used for fingerprinting but not for website loading to ensure full functionality</small>
 
-					<label for="combinedURL">Combined URL</label>
+					<label for="combinedURL">Reference URL (Auto-generated)</label>
 					<textarea
 						id="combinedURL"
 						name="combinedURL"
@@ -701,7 +750,7 @@
 						<option value="webkit">Webkit</option>
 					</select>
 
-					<label for="openCount">Time of Run Automation:</label>
+					<label for="openCount">Number of Cycles:</label>
 					<input
 						type="number"
 						name="openCount"
@@ -712,7 +761,7 @@
 						required
 					/>
 
-					<label for="profilesAtOnce">Profiles at Once:</label>
+					<label for="profilesAtOnce">Profiles per Cycle:</label>
 					<input
 						type="number"
 						name="profilesAtOnce"
@@ -733,61 +782,34 @@
 						value="30"
 						required
 					/>
-					<small
-						style="
-							background-color: #ffffff;
-							color: #000;
-							font-size: 15px;
-							font-weight: bold;
-						"
-						>Recommended: 30 seconds. Increase for slow websites, decrease for fast
-						ones.</small
-					>
+					<small>Time to wait for complete website loading including ads</small>
 
-					<label for="minWaitTime">Minimum Wait Time (seconds):</label>
+					<label for="minWaitTime">Minimum Session Time (seconds):</label>
 					<input
 						type="number"
 						name="minWaitTime"
 						id="minWaitTime"
-						min="10"
+						min="30"
 						max="120"
-						value="45"
+						value="60"
 						required
 					/>
-					<small
-						style="
-							background-color: #ffffff;
-							color: #000;
-							font-size: 15px;
-							font-weight: bold;
-						"
-						>Recommended: 45 seconds. This is the minimum time each profile will stay on
-						the website.</small
-					>
+					<small>Minimum time for ad detection and clicking (increased from 45s to 60s)</small>
 
-					<label for="maxWaitTime">Maximum Wait Time (seconds):</label>
+					<label for="maxWaitTime">Maximum Session Time (seconds):</label>
 					<input
 						type="number"
 						name="maxWaitTime"
 						id="maxWaitTime"
-						min="10"
+						min="30"
 						max="120"
-						value="55"
+						value="80"
 						required
 					/>
-					<small
-						style="
-							background-color: #ffffff;
-							color: #000;
-							font-size: 15px;
-							font-weight: bold;
-						"
-						>Recommended: 55 seconds. This is the maximum time each profile will stay on
-						the website.</small
-					>
+					<small>Maximum session time with comprehensive ad interaction (increased from 55s to 80s)</small>
 
 					<div class="control-buttons">
-						<button type="submit" id="startButton">Start Automation</button>
+						<button type="submit" id="startButton">🚀 Start Enhanced Automation</button>
 					</div>
 				</form>
 			</div>
@@ -808,7 +830,7 @@
 					font-size: large;
 				"
 			>
-				Stop Automation
+				🛑 Stop Automation
 			</button>
 
 			<!-- Progress indicator -->
@@ -841,11 +863,11 @@
 				</div>
 			</div>
 
-			<div id="status">Status: Waiting...</div>
+			<div id="status">Status: Ready for enhanced automation with aggressive ad clicking...</div>
 
 			<!-- Profile logs container -->
 			<div class="profile-logs-container" id="profileLogsContainer">
-				<h3>📊 Automation Logs</h3>
+				<h3>📊 Enhanced Automation Logs - Ad Clicking Activity</h3>
 				<div class="profile-logs-grid" id="profileLogsGrid"></div>
 			</div>
 		</div>
@@ -979,7 +1001,7 @@
 							<div class="profile-log-title">Profile ${i} <span class="profile-time" id="profileTime${i}"></span></div>
 							<div class="profile-log-status waiting" id="profileStatus${i}">Waiting</div>
 						</div>
-						<textarea class="profile-log-area" id="profileLog${i}" readonly></textarea>
+						<textarea class="profile-log-area" id="profileLog${i}" readonly placeholder="Waiting for enhanced ad-clicking automation to start..."></textarea>
 					`;
 					profileLogsGrid.appendChild(logItem);
 
@@ -1199,15 +1221,15 @@
 					const data = await response.json();
 
 					if (data.status === 'completed') {
-						statusDiv.innerText = `Status: Automation completed ✅ (${
+						statusDiv.innerText = `Status: Enhanced automation completed ✅ (${
 							data.completedWindows
 						}/${data.totalWindows} profiles completed, ${
 							data.successWindows || 0
-						} successful, ${data.failedWindows || 0} failed across all cycles)`;
+						} successful with ad clicks, ${data.failedWindows || 0} failed across all cycles)`;
 						setAutomationState(false);
 					} else if (data.activeWindows > 0) {
 						// Create status with only active window details
-						let statusText = `Running: ${data.activeWindows} profiles`;
+						let statusText = `Running: ${data.activeWindows} profiles actively clicking ads`;
 
 						// Add active window details in compact format
 						if (data.activeWindowDetails && data.activeWindowDetails.length > 0) {
@@ -1231,11 +1253,11 @@
 
 						setAutomationState(true);
 					} else if (data.status === 'idle') {
-						statusDiv.innerText = 'Status: Ready to start automation...';
+						statusDiv.innerText = 'Status: Ready for enhanced automation with aggressive ad clicking...';
 						setAutomationState(false);
 						currentCycle = 1; // Reset cycle counter to 1
 					} else {
-						statusDiv.innerText = 'Status: Preparing automation cycles...';
+						statusDiv.innerText = 'Status: Preparing enhanced automation cycles...';
 						setAutomationState(true);
 					}
 
@@ -1250,17 +1272,17 @@
 			stopButton.addEventListener('click', async () => {
 				// Show stop confirmation popup
 				const stopContent = `
-					<p style="margin-bottom: 20px; color: #f44336; font-weight: 600;">⚠️ Are you sure you want to stop the automation?</p>
+					<p style="margin-bottom: 20px; color: #f44336; font-weight: 600;">⚠️ Are you sure you want to stop the enhanced automation?</p>
 					<p style="color: #ff9800; margin-bottom: 15px;">This will:</p>
 					<ul style="color: #ffffff; margin-left: 20px; margin-bottom: 20px;">
+						<li>Stop all ad clicking activities</li>
 						<li>Close all running browser windows</li>
-						<li>Stop all active profiles</li>
 						<li>End the current automation cycle</li>
 					</ul>
-					<p style="color: #4caf50; font-weight: 600;">Any completed profiles will be preserved.</p>
+					<p style="color: #4caf50; font-weight: 600;">Any completed profiles and ad clicks will be preserved.</p>
 				`;
 
-				showPopup('🛑 Stop Automation', stopContent, 'Stop Automation', true);
+				showPopup('🛑 Stop Enhanced Automation', stopContent, 'Stop Automation', true);
 
 				// Handle stop confirmation
 				popupConfirm.onclick = async () => {
@@ -1275,7 +1297,7 @@
 						const result = await response.json();
 
 						if (result.success) {
-							statusDiv.innerText = 'Status: Automation stopped';
+							statusDiv.innerText = 'Status: Enhanced automation stopped';
 							setAutomationState(false);
 						} else {
 							console.error(`Failed to stop automation: ${result.error}`);
@@ -1293,9 +1315,9 @@
 
 				// Show start confirmation popup
 				const startContent = `
-					<p style="margin-bottom: 20px; color: #ff9800; font-weight: 600;">Please review your automation settings:</p>
+					<p style="margin-bottom: 20px; color: #ff9800; font-weight: 600;">🎯 Enhanced Automation Configuration:</p>
 					<div class="data-item">
-						<span class="data-label">Blog URL:</span>
+						<span class="data-label">Target Website:</span>
 						<span class="data-value">${payload.blogURL}</span>
 					</div>
 					<div class="data-item">
@@ -1311,19 +1333,16 @@
 						<span class="data-value">${payload.profilesAtOnce}</span>
 					</div>
 					<div class="data-item">
-						<span class="data-label">Timeout:</span>
-						<span class="data-value">${payload.timeout}s</span>
-					</div>
-					<div class="data-item">
-						<span class="data-label">Wait Time:</span>
+						<span class="data-label">Session Time:</span>
 						<span class="data-value">${payload.minWaitTime}-${payload.maxWaitTime}s</span>
 					</div>
-					<p style="margin-top: 20px; color: #4caf50; font-weight: 600;">Total Profiles: ${
-						payload.openCount * payload.profilesAtOnce
-					}</p>
+					<p style="margin-top: 20px; color: #4caf50; font-weight: 600;">
+						🎯 Total Profiles: ${payload.openCount * payload.profilesAtOnce}<br>
+						🚀 Features: Aggressive ad clicking, full CSS/JS loading, popup handling
+					</p>
 				`;
 
-				showPopup('🚀 Start Automation', startContent, 'Start Automation');
+				showPopup('🚀 Start Enhanced Automation', startContent, 'Start Enhanced Automation');
 
 				// Handle confirmation
 				popupConfirm.onclick = async () => {
@@ -1335,7 +1354,7 @@
 
 					// Immediately set automation state to prevent button flickering
 					setAutomationState(true);
-					statusDiv.innerText = 'Status: Starting automation...';
+					statusDiv.innerText = 'Status: Starting enhanced automation with aggressive ad clicking...';
 
 					try {
 						const res = await fetch('/open-url', {
@@ -1350,20 +1369,21 @@
 							// Clear any existing logs and add initial messages
 							clearAllProfileLogs();
 							for (let i = 1; i <= profilesCount; i++) {
-								appendProfileLog(i, `🚀 Starting Profile ${i}`);
+								appendProfileLog(i, `🚀 Starting Enhanced Profile ${i}`);
+								appendProfileLog(i, `🎯 Aggressive ad clicking enabled`);
 								appendProfileLog(i, `⏳ Waiting for automation to start...`);
 							}
 						} else {
 							console.error(`Failed: ${result.error}`);
 							// Reset state if automation failed to start
 							setAutomationState(false);
-							statusDiv.innerText = 'Status: Failed to start automation';
+							statusDiv.innerText = 'Status: Failed to start enhanced automation';
 						}
 					} catch (err) {
 						console.error(`Error: ${err.message}`);
 						// Reset state if there was an error
 						setAutomationState(false);
-						statusDiv.innerText = 'Status: Error starting automation';
+						statusDiv.innerText = 'Status: Error starting enhanced automation';
 					}
 				};
 			});

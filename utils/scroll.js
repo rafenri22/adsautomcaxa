@@ -28,21 +28,45 @@ async function moveMouseSmooth(page, from, to, steps = 25) {
 	}
 }
 
-// Enhanced ad interaction with better detection
+// Enhanced ad interaction with aggressive clicking
 async function simulateAdInteraction(page, profileIndex) {
 	if (!page || page.isClosed()) return;
-	log('🎯 Searching for advertisement elements...', profileIndex);
+	log('🎯 Searching for advertisement elements to click...', profileIndex);
 
 	try {
-		// Comprehensive ad selectors
+		// Comprehensive ad selectors including the specific ones mentioned
 		const adSelectors = [
+			// General ad selectors
 			'.ads', '.ad', '.advertisement', '.google-ad', '.adsense',
 			'[class*="ad-"]', '[id*="ad-"]', '[class*="ads-"]', '[id*="ads-"]',
-			'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
-			'iframe[src*="googletagmanager"]', 'ins.adsbygoogle', '.adsbygoogle',
+			'ins.adsbygoogle', '.adsbygoogle',
 			'[class*="banner"]', '[id*="banner"]', '.sponsor', '.sponsored',
-			'[data-ad]', '[data-ads]', '.ad-container', '.ads-container'
+			'[data-ad]', '[data-ads]', '.ad-container', '.ads-container',
+			
+			// Specific ad network selectors for profitableratecpm and highperformanceformat
+			'[src*="profitableratecpm.com"]',
+			'[src*="highperformanceformat.com"]',
+			'[data-key*="dac5bd782390c09ca3783e4361641fe1"]',
+			'[data-key*="bed062db9e271d1ad41b99f36e2c623c"]',
+			
+			// Common ad iframe selectors
+			'iframe[src*="doubleclick"]', 
+			'iframe[src*="googlesyndication"]',
+			'iframe[src*="googletagmanager"]',
+			'iframe[src*="profitableratecpm"]',
+			'iframe[src*="highperformanceformat"]',
+			
+			// Banner size specific
+			'[width="320"][height="50"]',
+			'[style*="width: 320px"][style*="height: 50px"]',
+			'.banner-320x50', '#banner-320x50',
+			
+			// Social bar and popunder elements
+			'[class*="social-bar"]', '[id*="social-bar"]',
+			'[class*="popunder"]', '[id*="popunder"]'
 		];
+
+		let totalAdClicks = 0;
 
 		for (const selector of adSelectors) {
 			if (!page || page.isClosed()) break;
@@ -53,23 +77,36 @@ async function simulateAdInteraction(page, profileIndex) {
 				if (adElements.length > 0) {
 					log(`📊 Found ${adElements.length} elements with selector: ${selector}`, profileIndex);
 					
-					for (let i = 0; i < Math.min(3, adElements.length); i++) {
+					for (let i = 0; i < Math.min(2, adElements.length); i++) {
 						if (!page || page.isClosed()) break;
 						
 						const adElement = adElements[i];
 						
 						try {
-							// Check if element is visible
-							const isVisible = await adElement.evaluate(el => {
+							// Check if element is visible and clickable
+							const elementInfo = await adElement.evaluate(el => {
 								const rect = el.getBoundingClientRect();
 								const style = window.getComputedStyle(el);
-								return rect.width > 0 && rect.height > 0 && 
-									   style.display !== 'none' && 
-									   style.visibility !== 'hidden' &&
-									   style.opacity !== '0';
+								const isClickable = el.tagName === 'A' || el.onclick || 
+													el.style.cursor === 'pointer' ||
+													el.getAttribute('onclick') || 
+													el.getAttribute('href') ||
+													el.tagName === 'BUTTON';
+								
+								return {
+									visible: rect.width > 0 && rect.height > 0 && 
+											style.display !== 'none' && 
+											style.visibility !== 'hidden' &&
+											style.opacity !== '0',
+									clickable: isClickable,
+									rect: rect,
+									tagName: el.tagName,
+									href: el.href || null,
+									text: el.textContent ? el.textContent.trim().substring(0, 50) : ''
+								};
 							});
 							
-							if (!isVisible) {
+							if (!elementInfo.visible) {
 								log(`👁️ Ad element ${i + 1} is not visible, skipping`, profileIndex);
 								continue;
 							}
@@ -81,37 +118,65 @@ async function simulateAdInteraction(page, profileIndex) {
 							
 							await page.waitForTimeout(1000 + Math.random() * 1500);
 							
+							// Get current pages count to detect popups
+							const currentPages = await page.context().pages();
+							
 							// Get element position
 							const boundingBox = await adElement.boundingBox();
 							if (boundingBox) {
 								const centerX = boundingBox.x + boundingBox.width / 2;
 								const centerY = boundingBox.y + boundingBox.height / 2;
 								
-								// Add some randomization to hover position
-								const hoverX = centerX + (Math.random() * 40 - 20);
-								const hoverY = centerY + (Math.random() * 40 - 20);
+								// Add some randomization to click position
+								const clickX = centerX + (Math.random() * 20 - 10);
+								const clickY = centerY + (Math.random() * 20 - 10);
 								
 								// Move mouse smoothly to ad
 								const currentPos = await page.evaluate(() => ({ x: 100, y: 100 }));
-								await moveMouseSmooth(page, currentPos, { x: hoverX, y: hoverY }, 15);
+								await moveMouseSmooth(page, currentPos, { x: clickX, y: clickY }, 15);
 								
-								log(`🎯 Hovering over ad element ${i + 1} at (${Math.round(hoverX)}, ${Math.round(hoverY)})`, profileIndex);
-								
-								// Hover for a realistic amount of time
-								const hoverTime = 2000 + Math.random() * 3000; // 2-5 seconds
-								await page.waitForTimeout(hoverTime);
-								
-								// Sometimes move mouse slightly while hovering
-								if (Math.random() < 0.5) {
-									await page.mouse.move(hoverX + Math.random() * 10 - 5, hoverY + Math.random() * 10 - 5);
-									await page.waitForTimeout(500 + Math.random() * 1000);
+								log(`🖱️ Clicking ad element ${i + 1} at (${Math.round(clickX)}, ${Math.round(clickY)})`, profileIndex);
+								log(`   ↳ Type: ${elementInfo.tagName}, Clickable: ${elementInfo.clickable}`, profileIndex);
+								if (elementInfo.href) {
+									log(`   ↳ Link: ${elementInfo.href}`, profileIndex);
 								}
 								
-								log(`✅ Interacted with ad element ${i + 1} for ${(hoverTime/1000).toFixed(1)}s`, profileIndex);
+								// Click the ad
+								await page.mouse.click(clickX, clickY);
+								totalAdClicks++;
+								
+								// Wait to see if new tab/popup opened
+								await page.waitForTimeout(3000);
+								
+								// Check for new pages/popups
+								const newPages = await page.context().pages();
+								if (newPages.length > currentPages.length) {
+									log(`🆕 Ad click opened ${newPages.length - currentPages.length} new tab(s)/popup(s)`, profileIndex);
+									
+									// Close any new tabs after a realistic delay
+									for (let pageIndex = currentPages.length; pageIndex < newPages.length; pageIndex++) {
+										const newPage = newPages[pageIndex];
+										try {
+											// Wait a bit before closing to register the click
+											await page.waitForTimeout(5000 + Math.random() * 3000);
+											await newPage.close();
+											log(`❌ Closed popup/new tab ${pageIndex - currentPages.length + 1}`, profileIndex);
+										} catch (e) {
+											log(`⚠️ Could not close popup: ${e.message}`, profileIndex);
+										}
+									}
+								} else {
+									log(`📄 Ad click did not open new tabs`, profileIndex);
+								}
+								
+								log(`✅ Successfully clicked ad element ${i + 1}`, profileIndex);
 							}
 							
+							// Wait before next ad click
+							await page.waitForTimeout(4000 + Math.random() * 6000);
+							
 						} catch (elementError) {
-							log(`⚠️ Error interacting with ad element ${i + 1}: ${elementError.message}`, profileIndex);
+							log(`⚠️ Error clicking ad element ${i + 1}: ${elementError.message}`, profileIndex);
 						}
 					}
 				}
@@ -121,51 +186,89 @@ async function simulateAdInteraction(page, profileIndex) {
 			}
 		}
 
-		// Also check for iframes that might contain ads
+		// Also search for direct ad links
 		try {
-			const iframes = await page.$$('iframe');
-			if (iframes.length > 0) {
-				log(`📺 Found ${iframes.length} iframes, checking for ad content`, profileIndex);
+			const adLinks = await page.evaluate(() => {
+				const links = Array.from(document.querySelectorAll('a')).filter(link => {
+					const href = link.href || '';
+					const text = link.textContent.toLowerCase();
+					const className = link.className.toLowerCase();
+					
+					// Check for ad-related URLs or text
+					return href.includes('profitableratecpm.com') || 
+						   href.includes('highperformanceformat.com') ||
+						   href.includes('/ads/') || 
+						   href.includes('adclick') ||
+						   text.includes('advertisement') ||
+						   text.includes('sponsor') ||
+						   className.includes('ad') ||
+						   className.includes('banner');
+				});
 				
-				for (let i = 0; i < Math.min(2, iframes.length); i++) {
+				return links.map(link => {
+					const rect = link.getBoundingClientRect();
+					if (rect.width > 10 && rect.height > 10 && rect.top >= -50 && rect.top <= window.innerHeight + 50) {
+						return {
+							x: rect.left + rect.width / 2,
+							y: rect.top + rect.height / 2,
+							width: rect.width,
+							height: rect.height,
+							href: link.href,
+							text: link.textContent.trim().substring(0, 50)
+						};
+					}
+					return null;
+				}).filter(Boolean);
+			});
+			
+			if (adLinks.length > 0) {
+				log(`🔗 Found ${adLinks.length} ad links to click`, profileIndex);
+				
+				for (let i = 0; i < Math.min(3, adLinks.length); i++) {
 					if (!page || page.isClosed()) break;
 					
-					try {
-						const iframe = iframes[i];
-						const src = await iframe.evaluate(el => el.src);
-						
-						// Check if iframe source suggests it's an ad
-						const adIndicators = ['doubleclick', 'googlesyndication', 'adsystem', 'adsense'];
-						const isAdIframe = adIndicators.some(indicator => src && src.includes(indicator));
-						
-						if (isAdIframe) {
-							log(`🎯 Found ad iframe: ${src}`, profileIndex);
-							
-							await iframe.scrollIntoView({ behavior: 'smooth', block: 'center' });
-							await page.waitForTimeout(1000 + Math.random() * 2000);
-							
-							const box = await iframe.boundingBox();
-							if (box) {
-								const centerX = box.x + box.width / 2;
-								const centerY = box.y + box.height / 2;
-								
-								await page.mouse.move(centerX, centerY);
-								await page.waitForTimeout(1500 + Math.random() * 2500);
-								
-								log(`✅ Interacted with ad iframe`, profileIndex);
+					const adLink = adLinks[i];
+					const currentPages = await page.context().pages();
+					
+					// Move to link and click
+					await moveMouseSmooth(page, 
+						{ x: Math.random() * 1000, y: Math.random() * 700 }, 
+						{ x: adLink.x, y: adLink.y }, 
+						12
+					);
+					
+					await page.waitForTimeout(1000 + Math.random() * 1500);
+					
+					log(`🔗 Clicking ad link: ${adLink.text} (${adLink.href})`, profileIndex);
+					await page.mouse.click(adLink.x, adLink.y);
+					totalAdClicks++;
+					
+					await page.waitForTimeout(3000);
+					
+					// Handle new tabs/popups
+					const newPages = await page.context().pages();
+					if (newPages.length > currentPages.length) {
+						log(`🆕 Ad link opened new tab(s)`, profileIndex);
+						for (let pageIndex = currentPages.length; pageIndex < newPages.length; pageIndex++) {
+							try {
+								const newPage = newPages[pageIndex];
+								await page.waitForTimeout(5000 + Math.random() * 3000);
+								await newPage.close();
+								log(`❌ Closed ad popup/tab`, profileIndex);
+							} catch (e) {
+								log(`⚠️ Could not close ad popup: ${e.message}`, profileIndex);
 							}
 						}
-					} catch (iframeError) {
-						// Continue with next iframe
-						continue;
 					}
+					
+					await page.waitForTimeout(3000 + Math.random() * 4000);
 				}
 			}
-		} catch (iframeError) {
-			log(`⚠️ Error checking iframes: ${iframeError.message}`, profileIndex);
+		} catch (linkError) {
+			log(`⚠️ Error searching ad links: ${linkError.message}`, profileIndex);
 		}
 
-		log(`✅ Ad interaction simulation completed`, profileIndex);
+		log(`🎉 Ad interaction completed - ${totalAdClicks} ads clicked`, profileIndex);
 
 	} catch (error) {
 		log(`❌ Error during ad interaction: ${error.message}`, profileIndex);
@@ -188,8 +291,8 @@ async function simulateHumanScroll(
 	let remainingTime = totalDuration;
 	const maxScrollDepth = Math.random() * 0.25 + 0.55; // 55% to 80%
 	const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
-	const willVisitAds = Math.random() < 0.8; // 80% chance to interact with ads
-	const visitAdsAfterAction = Math.floor(Math.random() * 3); // Random step to trigger ad check
+	const willVisitAds = true; // Always look for ads
+	const adCheckInterval = 2; // Check for ads every 2 actions
 
 	// Plan scroll actions
 	while (remainingTime > 3) {
@@ -203,7 +306,7 @@ async function simulateHumanScroll(
 	}
 
 	log(`📋 Enhanced scroll plan: ${actions.length} actions over ${totalDuration}s`, profileIndex);
-	log(`🎯 Will interact with ads: ${willVisitAds ? 'Yes' : 'No'}`, profileIndex);
+	log(`🎯 Will actively search for ads throughout scrolling`, profileIndex);
 	log(`📏 Page height: ${Math.round(pageHeight)}px`, profileIndex);
 
 	for (const [index, action] of actions.entries()) {
@@ -270,8 +373,8 @@ async function simulateHumanScroll(
 
 			if (!page || page.isClosed()) break;
 
-			// Visit ads periodically
-			if (willVisitAds && (index === visitAdsAfterAction || index % 4 === 0)) {
+			// Aggressively look for and click ads
+			if (willVisitAds && index % adCheckInterval === 0) {
 				await simulateAdInteraction(page, profileIndex);
 			}
 
@@ -279,6 +382,12 @@ async function simulateHumanScroll(
 			log(`⚠️ Error during scroll action: ${error.message}`, profileIndex);
 			break;
 		}
+	}
+
+	// Final ad check before completing
+	if (page && !page.isClosed()) {
+		log(`🎯 Final ad search before completing scroll`, profileIndex);
+		await simulateAdInteraction(page, profileIndex);
 	}
 
 	// Final scroll behavior - sometimes return to top
@@ -306,7 +415,7 @@ async function simulateHumanScroll(
 		await page.waitForTimeout(1000 + Math.random() * 2000);
 	}
 
-	log(`🎉 Enhanced scroll simulation completed`, profileIndex);
+	log(`🎉 Enhanced scroll simulation completed with ad interactions`, profileIndex);
 }
 
 // Simulate advanced human behaviors
