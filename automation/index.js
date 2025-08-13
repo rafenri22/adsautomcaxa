@@ -32,6 +32,8 @@ let activeBrowsers = [];
 let isContinuousMode = false;
 let continuousModeConfig = null;
 let nextWindowIndex = 1;
+let activeContinuousBrowsers = 0; // Track active continuous browsers
+let maxConcurrentBrowsers = 10; // Default limit
 
 // Function to stop automation
 function stopAutomation() {
@@ -47,6 +49,7 @@ function resetStopState() {
 	isContinuousMode = false;
 	continuousModeConfig = null;
 	nextWindowIndex = 1;
+	activeContinuousBrowsers = 0;
 }
 
 // Function to get cycle-specific profile index
@@ -508,15 +511,30 @@ async function waitForCompletePageLoad(page, profileIndex, timeout = 45) {
 	}
 }
 
-// Function to start a new browser for continuous mode
+// Function to start a new browser for continuous mode - FIXED
 async function startContinuousBrowser() {
 	if (!isContinuousMode || !continuousModeConfig || shouldStop) return;
+	
+	// Check if we've reached the concurrent limit
+	if (activeContinuousBrowsers >= maxConcurrentBrowsers) {
+		log(`⏳ Concurrent limit reached (${activeContinuousBrowsers}/${maxConcurrentBrowsers}), waiting...`, null);
+		// Retry after some time
+		setTimeout(() => {
+			if (isContinuousMode && !shouldStop) {
+				startContinuousBrowser();
+			}
+		}, 5000 + Math.random() * 5000);
+		return;
+	}
 	
 	const windowIndex = nextWindowIndex++;
 	const waitTime = continuousModeConfig.minWaitTime + 
 					  Math.random() * (continuousModeConfig.maxWaitTime - continuousModeConfig.minWaitTime);
 	
-	log(`🔄 Starting continuous browser #${windowIndex}`, null);
+	log(`🔄 Starting continuous browser #${windowIndex} (${activeContinuousBrowsers + 1}/${maxConcurrentBrowsers})`, null);
+	
+	// Increment active count
+	activeContinuousBrowsers++;
 	
 	// Start the browser process
 	processWindow(
@@ -529,17 +547,23 @@ async function startContinuousBrowser() {
 		continuousModeConfig.timeout,
 		true // isDirectLinkOnly
 	).then(() => {
-		// When this browser completes, start a new one if continuous mode is still active
+		// When this browser completes, decrement active count and start a new one
+		activeContinuousBrowsers--;
+		totalViews++; // Increment total views counter
+		log(`🔄 Browser #${windowIndex} completed (${activeContinuousBrowsers}/${maxConcurrentBrowsers} remaining)`, null);
+		
 		if (isContinuousMode && !shouldStop) {
-			log(`🔄 Browser #${windowIndex} completed, starting replacement...`, null);
-			totalViews++; // Increment total views counter
-			// Small delay before starting next browser
+			log(`🔄 Starting replacement browser for completed #${windowIndex}...`, null);
+			// Start replacement immediately
 			setTimeout(() => {
 				startContinuousBrowser();
 			}, 1000 + Math.random() * 3000);
 		}
 	}).catch((error) => {
+		// Decrement active count on error too
+		activeContinuousBrowsers--;
 		log(`❌ Error in continuous browser #${windowIndex}: ${error.message}`, null);
+		
 		if (isContinuousMode && !shouldStop) {
 			// Start replacement even on error
 			setTimeout(() => {
@@ -990,6 +1014,7 @@ async function runAutomation(config) {
 			// Direct link mode: treat each view as a separate "browser"
 			totalCycles = 1;
 			profilesPerCycle = Math.max(1, Math.min(parseInt(directLinkViews), 50)); // Max 50 concurrent views
+			maxConcurrentBrowsers = profilesPerCycle; // Set the concurrent limit
 			log(`📊 DIRECT LINK MODE: ${profilesPerCycle} concurrent browsers ${isContinuousMode ? '(Continuous Loop)' : ''}`, null);
 		} else {
 			// Regular automation mode
@@ -1005,6 +1030,7 @@ async function runAutomation(config) {
 		totalViews = 0;
 		isAutomationInProgress = true;
 		currentCycle = 1;
+		activeContinuousBrowsers = 0; // Reset active continuous browsers count
 		updateGlobalCycleInfo(currentCycle, profilesPerCycle);
 
 		// Reset stop state at the beginning
@@ -1013,7 +1039,7 @@ async function runAutomation(config) {
 		log(`📊 ${isContinuousMode ? 'Continuous mode with' : 'Total'} browsers to run: ${profilesPerCycle}${isContinuousMode ? ' (concurrent limit)' : ` (${totalWindows} total)`}`, null);
 
 		if (isContinuousMode) {
-			// Set up continuous mode
+			// Set up continuous mode configuration
 			continuousModeConfig = {
 				targetURL,
 				proxyURL,
@@ -1023,36 +1049,18 @@ async function runAutomation(config) {
 				maxWaitTime
 			};
 
-			// Start initial batch of browsers
+			// Start initial batch of browsers using the improved function
 			log(`🔄 Starting continuous mode with ${profilesPerCycle} concurrent browsers`, null);
 			
-			const initialPromises = [];
-			for (let i = 1; i <= profilesPerCycle; i++) {
-				const waitTime = minWaitTime + Math.random() * (maxWaitTime - minWaitTime);
-				initialPromises.push(
-					processWindow(
-						i,
-						browser,
-						targetURL,
-						proxyURL,
-						Math.round(waitTime),
-						1,
-						timeout,
-						true // isDirectLinkOnly
-					)
-				);
-				
+			// Use the startContinuousBrowser function for all initial browsers
+			for (let i = 0; i < profilesPerCycle; i++) {
 				// Small delay between browser starts
-				await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
+				setTimeout(() => {
+					if (isContinuousMode && !shouldStop) {
+						startContinuousBrowser();
+					}
+				}, i * (1000 + Math.random() * 2000));
 			}
-
-			// Set up replacements for completed browsers
-			Promise.allSettled(initialPromises).then(() => {
-				if (isContinuousMode && !shouldStop) {
-					log(`🔄 Initial batch completed, starting continuous replacement cycle`, null);
-					// The replacement logic is handled in the processWindow completion callback
-				}
-			});
 
 			// Keep the process alive for continuous mode
 			return new Promise((resolve) => {
