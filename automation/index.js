@@ -19,6 +19,7 @@ let totalWindows = 0;
 let completedWindows = 0;
 let failedWindows = 0;
 let successWindows = 0;
+let totalViews = 0; // Track total views completed
 let isAutomationInProgress = false;
 let currentCycle = 0;
 let profilesPerCycle = 0;
@@ -27,9 +28,15 @@ let profilesPerCycle = 0;
 let shouldStop = false;
 let activeBrowsers = [];
 
+// Continuous mode variables
+let isContinuousMode = false;
+let continuousModeConfig = null;
+let nextWindowIndex = 1;
+
 // Function to stop automation
 function stopAutomation() {
 	shouldStop = true;
+	isContinuousMode = false;
 	log('🛑 Stop automation requested...');
 }
 
@@ -37,6 +44,9 @@ function stopAutomation() {
 function resetStopState() {
 	shouldStop = false;
 	activeBrowsers = [];
+	isContinuousMode = false;
+	continuousModeConfig = null;
+	nextWindowIndex = 1;
 }
 
 // Function to get cycle-specific profile index
@@ -498,6 +508,47 @@ async function waitForCompletePageLoad(page, profileIndex, timeout = 45) {
 	}
 }
 
+// Function to start a new browser for continuous mode
+async function startContinuousBrowser() {
+	if (!isContinuousMode || !continuousModeConfig || shouldStop) return;
+	
+	const windowIndex = nextWindowIndex++;
+	const waitTime = continuousModeConfig.minWaitTime + 
+					  Math.random() * (continuousModeConfig.maxWaitTime - continuousModeConfig.minWaitTime);
+	
+	log(`🔄 Starting continuous browser #${windowIndex}`, null);
+	
+	// Start the browser process
+	processWindow(
+		windowIndex,
+		continuousModeConfig.browser,
+		continuousModeConfig.targetURL,
+		continuousModeConfig.proxyURL,
+		Math.round(waitTime),
+		1, // Always cycle 1 for continuous mode
+		continuousModeConfig.timeout,
+		true // isDirectLinkOnly
+	).then(() => {
+		// When this browser completes, start a new one if continuous mode is still active
+		if (isContinuousMode && !shouldStop) {
+			log(`🔄 Browser #${windowIndex} completed, starting replacement...`, null);
+			totalViews++; // Increment total views counter
+			// Small delay before starting next browser
+			setTimeout(() => {
+				startContinuousBrowser();
+			}, 1000 + Math.random() * 3000);
+		}
+	}).catch((error) => {
+		log(`❌ Error in continuous browser #${windowIndex}: ${error.message}`, null);
+		if (isContinuousMode && !shouldStop) {
+			// Start replacement even on error
+			setTimeout(() => {
+				startContinuousBrowser();
+			}, 5000 + Math.random() * 5000);
+		}
+	});
+}
+
 // Function to process a single window
 async function processWindow(
 	windowIndex,
@@ -524,7 +575,7 @@ async function processWindow(
 			return;
 		}
 
-		log(`🚀 Opening Profile ${cycleSpecificIndex} (Cycle ${cycle})${isDirectLinkOnly ? ' - DIRECT LINK ONLY' : ''}`, windowIndex);
+		log(`🚀 Opening ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex} ${isContinuousMode ? '(Continuous)' : `(Cycle ${cycle})`}${isDirectLinkOnly ? ' - DIRECT LINK ONLY' : ''}`, windowIndex);
 		updateProfileStatus(windowIndex, 'waiting');
 
 		// Select browser (only Chrome or Edge)
@@ -534,14 +585,14 @@ async function processWindow(
 			browserChoice = { name: 'chromium', launcher: chromium };
 		}
 
-		log(`🌐 Using browser: ${browserChoice.name} for Profile ${cycleSpecificIndex}`, windowIndex);
+		log(`🌐 Using browser: ${browserChoice.name} for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 
 		// Generate comprehensive fingerprint with mobile support
 		let fingerprint;
 		try {
 			const deviceCategory = Math.random() < 0.3 ? 'mobile' : 'desktop'; // 30% mobile
 			fingerprint = await generateFingerprint(proxyURL, browserChoice.name, deviceCategory);
-			log(`🔐 Generated ${deviceCategory} fingerprint for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`🔐 Generated ${deviceCategory} fingerprint for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 		} catch (fingerprintError) {
 			log(`⚠️ Fingerprint generation failed, using defaults: ${fingerprintError.message}`, windowIndex);
 			fingerprint = {
@@ -557,7 +608,7 @@ async function processWindow(
 
 		// Check if stop was requested before launching browser
 		if (shouldStop) {
-			log(`⏹️ Skipping Profile ${cycleSpecificIndex} - automation stopped`, windowIndex);
+			log(`⏹️ Skipping ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex} - automation stopped`, windowIndex);
 			updateProfileStatus(windowIndex, 'failed');
 			failedWindows++;
 			return;
@@ -565,7 +616,7 @@ async function processWindow(
 
 		// Launch browser with optimized settings for ad loading
 		try {
-			log(`🌐 Launching ${fingerprint.isMobile ? 'mobile' : 'desktop'} browser for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`🌐 Launching ${fingerprint.isMobile ? 'mobile' : 'desktop'} browser for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 			
 			const browserArgs = [
 				'--no-first-run',
@@ -609,9 +660,9 @@ async function processWindow(
 				slowMo: 50 + Math.random() * 100
 			});
 			
-			log(`✅ Browser launched successfully for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`✅ Browser launched successfully for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 		} catch (launchError) {
-			log(`❌ Browser launch failed for Profile ${cycleSpecificIndex}: ${launchError.message}`, windowIndex);
+			log(`❌ Browser launch failed for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}: ${launchError.message}`, windowIndex);
 			updateProfileStatus(windowIndex, 'failed');
 			failedWindows++;
 			return;
@@ -649,9 +700,9 @@ async function processWindow(
 			};
 			
 			context = await browserInstance.newContext(contextOptions);
-			log(`📄 ${fingerprint.isMobile ? 'Mobile' : 'Desktop'} context created for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`📄 ${fingerprint.isMobile ? 'Mobile' : 'Desktop'} context created for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 		} catch (contextError) {
-			log(`❌ Context creation failed for Profile ${cycleSpecificIndex}: ${contextError.message}`, windowIndex);
+			log(`❌ Context creation failed for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}: ${contextError.message}`, windowIndex);
 			updateProfileStatus(windowIndex, 'failed');
 			failedWindows++;
 			return;
@@ -661,9 +712,9 @@ async function processWindow(
 		try {
 			page = await context.newPage();
 			await page.setViewportSize(fingerprint.screen);
-			log(`📃 New page created for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`📃 New page created for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 		} catch (pageError) {
-			log(`❌ Page creation failed for Profile ${cycleSpecificIndex}: ${pageError.message}`, windowIndex);
+			log(`❌ Page creation failed for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}: ${pageError.message}`, windowIndex);
 			updateProfileStatus(windowIndex, 'failed');
 			failedWindows++;
 			return;
@@ -672,15 +723,15 @@ async function processWindow(
 		// Inject comprehensive fingerprint scripts
 		try {
 			await injectFingerprint(page, fingerprint);
-			log(`🔧 Comprehensive fingerprint injected for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`🔧 Comprehensive fingerprint injected for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 		} catch (injectError) {
-			log(`⚠️ Fingerprint injection failed for Profile ${cycleSpecificIndex}: ${injectError.message}`, windowIndex);
+			log(`⚠️ Fingerprint injection failed for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}: ${injectError.message}`, windowIndex);
 		}
 
 		// Navigate to the page
 		try {
 			if (shouldStop) {
-				log(`⏹️ Stopping Profile ${cycleSpecificIndex} - automation stopped`, windowIndex);
+				log(`⏹️ Stopping ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex} - automation stopped`, windowIndex);
 				updateProfileStatus(windowIndex, 'failed');
 				failedWindows++;
 				return;
@@ -693,13 +744,13 @@ async function processWindow(
 				timeout: (timeout + 15) * 1000
 			});
 
-			log(`✅ Initial page load completed for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`✅ Initial page load completed for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 
 			// Wait for complete page load including ads
 			const loadSuccess = await waitForCompletePageLoad(page, windowIndex, 40);
 			
 			if (loadSuccess) {
-				log(`🎉 Website fully loaded with ad scripts for Profile ${cycleSpecificIndex}`, windowIndex);
+				log(`🎉 Website fully loaded with ad scripts for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 			}
 
 		} catch (navError) {
@@ -722,13 +773,14 @@ async function processWindow(
 
 		// Check if stop was requested after page load
 		if (shouldStop) {
-			log(`⏹️ Stopping Profile ${cycleSpecificIndex} - automation stopped`, windowIndex);
+			log(`⏹️ Stopping ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex} - automation stopped`, windowIndex);
 			updateProfileStatus(windowIndex, 'failed');
 			failedWindows++;
 			return;
 		}
 
-		log(`🕒 Starting ${waitTime}s ${isDirectLinkOnly ? 'DIRECT LINK' : 'LEGIT ad clicking'} session for Profile ${cycleSpecificIndex}`, windowIndex);
+		const sessionType = isContinuousMode ? 'CONTINUOUS' : (isDirectLinkOnly ? 'DIRECT LINK' : 'LEGIT ad clicking');
+		log(`🕒 Starting ${waitTime}s ${sessionType} session for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 		updateProfileStatus(windowIndex, 'running');
 
 		// Track this window after successful page load
@@ -736,14 +788,14 @@ async function processWindow(
 			browserInstance,
 			startTime: Date.now(),
 			waitTime,
-			cycle
+			cycle: isContinuousMode ? 'Continuous' : cycle
 		});
 
 		// Set up strict timeout
 		const strictTimeoutId = setTimeout(async () => {
 			if (page && !page.isClosed() && !isCompleted) {
 				isCompleted = true;
-				log(`⏰ Session timeout (${waitTime}s) - closing Profile ${cycleSpecificIndex}`, windowIndex);
+				log(`⏰ Session timeout (${waitTime}s) - closing ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}`, windowIndex);
 				updateProfileStatus(windowIndex, 'success');
 				successWindows++;
 
@@ -765,7 +817,7 @@ async function processWindow(
 					activeWindows.delete(windowIndex);
 					completedWindows++;
 
-					log(`✅ Profile ${cycleSpecificIndex} completed by timeout (${completedWindows}/${totalWindows})`, windowIndex);
+					log(`✅ ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex} completed by timeout (${completedWindows}/${totalWindows})`, windowIndex);
 				} catch (timeoutCloseError) {
 					log(`⚠️ Error during timeout cleanup: ${timeoutCloseError.message}`, windowIndex);
 				}
@@ -778,7 +830,7 @@ async function processWindow(
 		if (isDirectLinkOnly) {
 			// Direct link mode - just visit the page and simulate user behavior
 			if (remainingTime > 5) {
-				log(`⏳ Direct link session for ${remainingTime}s...`, windowIndex);
+				log(`⏳ ${isContinuousMode ? 'Continuous' : 'Direct link'} session for ${remainingTime}s...`, windowIndex);
 				await visitDirectLink(page, windowIndex, targetURL, remainingTime - 2);
 			}
 		} else {
@@ -824,14 +876,15 @@ async function processWindow(
 		// Only log completion if we haven't been closed by timeout and not already completed
 		if (page && !page.isClosed() && !isCompleted) {
 			isCompleted = true;
-			log(`✅ Profile ${cycleSpecificIndex} (Cycle ${cycle}) completed ${isDirectLinkOnly ? 'DIRECT LINK' : 'LEGIT'} session (${completedWindows + 1}/${totalWindows})`, windowIndex);
+			const sessionTypeText = isContinuousMode ? 'CONTINUOUS' : (isDirectLinkOnly ? 'DIRECT LINK' : 'LEGIT');
+			log(`✅ ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex} ${isContinuousMode ? '(Continuous)' : `(Cycle ${cycle})`} completed ${sessionTypeText} session (${completedWindows + 1}/${totalWindows})`, windowIndex);
 			updateProfileStatus(windowIndex, 'success');
 			successWindows++;
 		}
 
 	} catch (err) {
 		if (!isCompleted) {
-			log(`❌ Error in Profile ${cycleSpecificIndex}: ${err.message}`, windowIndex);
+			log(`❌ Error in ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}: ${err.message}`, windowIndex);
 			updateProfileStatus(windowIndex, 'failed');
 			failedWindows++;
 		}
@@ -850,7 +903,7 @@ async function processWindow(
 				await page.close();
 			}
 		} catch (closePageErr) {
-			log(`⚠️ Failed to close page for Profile ${cycleSpecificIndex}: ${closePageErr.message}`, windowIndex);
+			log(`⚠️ Failed to close page for ${isDirectLinkOnly && isContinuousMode ? 'Browser' : 'Profile'} ${cycleSpecificIndex}: ${closePageErr.message}`, windowIndex);
 		}
 
 		try {
@@ -895,17 +948,22 @@ async function runAutomation(config) {
 			minWaitTime = 45,
 			maxWaitTime = 55,
 			directLinkViews = 0, // New parameter for direct link views
-			directLinkURL = '' // New parameter for direct link URL
+			directLinkURL = '', // New parameter for direct link URL
+			continuousMode = false // New parameter for continuous mode
 		} = config;
 
 		const isDirectLinkMode = directLinkViews > 0 && directLinkURL;
+		isContinuousMode = isDirectLinkMode && continuousMode;
 		
-		log('🚀 Starting LEGIT automation with focused ad clicking:', null);
+		log('🚀 Starting automation with enhanced capabilities:', null);
 		log(`   URL: ${url}`, null);
 		log(`   Proxy: ${proxyURL}`, null);
 		log(`   Browser: ${browser}`, null);
 		if (isDirectLinkMode) {
-			log(`   🎯 DIRECT LINK MODE: ${directLinkViews} views to ${directLinkURL}`, null);
+			log(`   🎯 DIRECT LINK MODE: ${directLinkViews} concurrent browsers to ${directLinkURL}`, null);
+			if (isContinuousMode) {
+				log(`   🔄 CONTINUOUS MODE: Infinite looping until stopped`, null);
+			}
 		} else {
 			log(`   Cycles: ${openCount}`, null);
 			log(`   Profiles per cycle: ${profilesAtOnce}`, null);
@@ -929,10 +987,10 @@ async function runAutomation(config) {
 		let totalCycles, profilesPerCycle;
 		
 		if (isDirectLinkMode) {
-			// Direct link mode: treat each view as a separate "profile"
+			// Direct link mode: treat each view as a separate "browser"
 			totalCycles = 1;
 			profilesPerCycle = Math.max(1, Math.min(parseInt(directLinkViews), 50)); // Max 50 concurrent views
-			log(`📊 DIRECT LINK MODE: ${profilesPerCycle} concurrent views`, null);
+			log(`📊 DIRECT LINK MODE: ${profilesPerCycle} concurrent browsers ${isContinuousMode ? '(Continuous Loop)' : ''}`, null);
 		} else {
 			// Regular automation mode
 			totalCycles = Math.max(1, Math.min(parseInt(openCount), 20));
@@ -940,10 +998,11 @@ async function runAutomation(config) {
 			log(`📊 Regular automation: ${totalCycles} cycles × ${profilesPerCycle} profiles`, null);
 		}
 
-		totalWindows = totalCycles * profilesPerCycle;
+		totalWindows = isContinuousMode ? profilesPerCycle : (totalCycles * profilesPerCycle);
 		completedWindows = 0;
 		failedWindows = 0;
 		successWindows = 0;
+		totalViews = 0;
 		isAutomationInProgress = true;
 		currentCycle = 1;
 		updateGlobalCycleInfo(currentCycle, profilesPerCycle);
@@ -951,75 +1010,133 @@ async function runAutomation(config) {
 		// Reset stop state at the beginning
 		resetStopState();
 
-		log(`📊 Total profiles to run: ${totalWindows}`, null);
+		log(`📊 ${isContinuousMode ? 'Continuous mode with' : 'Total'} browsers to run: ${profilesPerCycle}${isContinuousMode ? ' (concurrent limit)' : ` (${totalWindows} total)`}`, null);
 
-		// Run automation cycles
-		for (let cycle = 1; cycle <= totalCycles; cycle++) {
-			currentCycle = cycle;
-			updateGlobalCycleInfo(currentCycle, profilesPerCycle);
+		if (isContinuousMode) {
+			// Set up continuous mode
+			continuousModeConfig = {
+				targetURL,
+				proxyURL,
+				browser,
+				timeout,
+				minWaitTime,
+				maxWaitTime
+			};
 
-			// Check if stop was requested before starting this cycle
-			if (shouldStop) {
-				log(`⏹️ Stopping automation - cycle ${cycle} cancelled`);
-				break;
-			}
-
-			// Clear logs from previous cycle to start fresh
-			clearProfileLogs();
-
-			const modeText = isDirectLinkMode ? 'DIRECT LINK views' : 'LEGIT ad clicking';
-			log(`🔄 Starting Cycle ${cycle}/${totalCycles} with ${modeText}`);
-
-			// Create promises for all profiles in this cycle
-			const waitTimes = getRandomWaitTimes(profilesPerCycle, minWaitTime, maxWaitTime);
+			// Start initial batch of browsers
+			log(`🔄 Starting continuous mode with ${profilesPerCycle} concurrent browsers`, null);
 			
-			log(`⏱️ Wait times for this cycle: ${waitTimes.map(t => `${t}s`).join(', ')}`);
-
-			const promises = Array.from({ length: profilesPerCycle }, (_, i) =>
-				processWindow(
-					(cycle - 1) * profilesPerCycle + i + 1,
-					browser,
-					targetURL,
-					proxyURL,
-					waitTimes[i],
-					cycle,
-					timeout,
-					isDirectLinkMode // Pass the direct link mode flag
-				)
-			);
-
-			await Promise.allSettled(promises);
-
-			// Check if stop was requested after this cycle
-			if (shouldStop) {
-				log(`⏹️ Stopping automation after cycle ${cycle}`);
-				break;
+			const initialPromises = [];
+			for (let i = 1; i <= profilesPerCycle; i++) {
+				const waitTime = minWaitTime + Math.random() * (maxWaitTime - minWaitTime);
+				initialPromises.push(
+					processWindow(
+						i,
+						browser,
+						targetURL,
+						proxyURL,
+						Math.round(waitTime),
+						1,
+						timeout,
+						true // isDirectLinkOnly
+					)
+				);
+				
+				// Small delay between browser starts
+				await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
 			}
 
-			const cycleText = isDirectLinkMode ? 'direct link views' : 'LEGIT ad interactions';
-			log(`✅ Cycle ${cycle} completed with ${cycleText}`);
+			// Set up replacements for completed browsers
+			Promise.allSettled(initialPromises).then(() => {
+				if (isContinuousMode && !shouldStop) {
+					log(`🔄 Initial batch completed, starting continuous replacement cycle`, null);
+					// The replacement logic is handled in the processWindow completion callback
+				}
+			});
 
-			// Small delay between cycles (except for the last cycle)
-			if (cycle < totalCycles && !shouldStop) {
-				log(`🕔 Waiting 5s before Cycle ${cycle + 1}...`);
-				await new Promise((r) => setTimeout(r, 5000));
-			}
-		}
+			// Keep the process alive for continuous mode
+			return new Promise((resolve) => {
+				const checkInterval = setInterval(() => {
+					if (shouldStop || !isContinuousMode) {
+						clearInterval(checkInterval);
+						log(`🛑 Continuous mode stopped`, null);
+						resolve();
+					}
+				}, 1000);
+			});
 
-		if (shouldStop) {
-			log(`🛑 Automation stopped by user request`);
 		} else {
-			const completionText = isDirectLinkMode ? 'direct link views' : 'LEGIT ad clicking';
-			log(`🎉 All ${totalCycles} cycles completed with ${completionText}!`);
+			// Regular automation mode (existing logic)
+			for (let cycle = 1; cycle <= totalCycles; cycle++) {
+				currentCycle = cycle;
+				updateGlobalCycleInfo(currentCycle, profilesPerCycle);
+
+				// Check if stop was requested before starting this cycle
+				if (shouldStop) {
+					log(`⏹️ Stopping automation - cycle ${cycle} cancelled`);
+					break;
+				}
+
+				// Clear logs from previous cycle to start fresh
+				clearProfileLogs();
+
+				const modeText = isDirectLinkMode ? 'DIRECT LINK views' : 'LEGIT ad clicking';
+				log(`🔄 Starting Cycle ${cycle}/${totalCycles} with ${modeText}`);
+
+				// Create promises for all profiles in this cycle
+				const waitTimes = getRandomWaitTimes(profilesPerCycle, minWaitTime, maxWaitTime);
+				
+				log(`⏱️ Wait times for this cycle: ${waitTimes.map(t => `${t}s`).join(', ')}`);
+
+				const promises = Array.from({ length: profilesPerCycle }, (_, i) =>
+					processWindow(
+						(cycle - 1) * profilesPerCycle + i + 1,
+						browser,
+						targetURL,
+						proxyURL,
+						waitTimes[i],
+						cycle,
+						timeout,
+						isDirectLinkMode // Pass the direct link mode flag
+					)
+				);
+
+				await Promise.allSettled(promises);
+
+				// Check if stop was requested after this cycle
+				if (shouldStop) {
+					log(`⏹️ Stopping automation after cycle ${cycle}`);
+					break;
+				}
+
+				const cycleText = isDirectLinkMode ? 'direct link views' : 'LEGIT ad interactions';
+				log(`✅ Cycle ${cycle} completed with ${cycleText}`);
+
+				// Small delay between cycles (except for the last cycle)
+				if (cycle < totalCycles && !shouldStop) {
+					log(`🕔 Waiting 5s before Cycle ${cycle + 1}...`);
+					await new Promise((r) => setTimeout(r, 5000));
+				}
+			}
+
+			if (shouldStop) {
+				log(`🛑 Automation stopped by user request`);
+			} else {
+				const completionText = isDirectLinkMode ? 'direct link views' : 'LEGIT ad clicking';
+				log(`🎉 All ${totalCycles} cycles completed with ${completionText}!`);
+			}
 		}
 
-		// Reset automation state
-		activeWindows.clear();
-		completedWindows = 0;
-		failedWindows = 0;
-		successWindows = 0;
-		totalWindows = 0;
-		isAutomationInProgress = false;
+		// Reset automation state (except for continuous mode)
+		if (!isContinuousMode) {
+			activeWindows.clear();
+			completedWindows = 0;
+			failedWindows = 0;
+			successWindows = 0;
+			totalWindows = 0;
+			totalViews = 0;
+			isAutomationInProgress = false;
+		}
 
 	} catch (error) {
 		log(`❌ Critical automation error: ${error.message}`);
@@ -1028,6 +1145,7 @@ async function runAutomation(config) {
 		// Reset state on error
 		activeWindows.clear();
 		isAutomationInProgress = false;
+		isContinuousMode = false;
 		throw error;
 	}
 }
@@ -1081,8 +1199,9 @@ function getStatus() {
 		completedWindows,
 		failedWindows,
 		successWindows,
+		totalViews,
 		activeWindows: activeWindows.size,
-		progress: totalWindows > 0 ? Math.round((completedWindows / totalWindows) * 100) : 0,
+		progress: isContinuousMode ? 100 : (totalWindows > 0 ? Math.round((completedWindows / totalWindows) * 100) : 0),
 		activeWindowDetails,
 		status: isAutomationInProgress
 			? activeWindows.size > 0
@@ -1092,8 +1211,9 @@ function getStatus() {
 			? 'completed'
 			: 'idle',
 		shouldStop,
-		currentCycle,
-		profilesPerCycle
+		currentCycle: isContinuousMode ? 'Continuous' : currentCycle,
+		profilesPerCycle,
+		continuousMode: isContinuousMode
 	};
 }
 

@@ -17,11 +17,13 @@ router.post('/', async (req, res) => {
 			minWaitTime,
 			maxWaitTime,
 			directLinkViews,
-			directLinkURL
+			directLinkURL,
+			continuousMode
 		} = req.body;
 
 		// Determine if this is direct link mode
 		const isDirectLinkMode = directLinkViews > 0 && directLinkURL;
+		const isContinuous = isDirectLinkMode && continuousMode;
 
 		// Input validation
 		if (!blogURL) {
@@ -63,6 +65,9 @@ router.post('/', async (req, res) => {
 		console.log('🔢 Parsed values:', { cycles, profiles, pageTimeout, minWait, maxWait });
 		if (isDirectLinkMode) {
 			console.log('🔗 Direct link mode - Views:', directLinkViews, 'URL:', directLinkURL);
+			if (isContinuous) {
+				console.log('🔄 Continuous mode enabled');
+			}
 		}
 
 		// Validation ranges
@@ -141,7 +146,7 @@ router.post('/', async (req, res) => {
 		res.json({
 			success: true,
 			started: true,
-			mode: isDirectLinkMode ? 'direct_link' : 'ad_clicking',
+			mode: isDirectLinkMode ? (isContinuous ? 'continuous_direct_link' : 'direct_link') : 'ad_clicking',
 			targetURL: targetURL,
 			proxyURL: ProxyURL || '',
 			cycles,
@@ -150,7 +155,8 @@ router.post('/', async (req, res) => {
 			minWait,
 			maxWait,
 			directLinkViews: directLinkViews || 0,
-			directLinkURL: directLinkURL || ''
+			directLinkURL: directLinkURL || '',
+			continuousMode: isContinuous
 		});
 
 		// Run automation in background with mode-specific configuration
@@ -162,7 +168,8 @@ router.post('/', async (req, res) => {
 			profilesAtOnce: profiles,
 			timeout: pageTimeout,
 			minWaitTime: minWait,
-			maxWaitTime: maxWait
+			maxWaitTime: maxWait,
+			continuousMode: isContinuous
 		};
 
 		// Add direct link parameters if in direct link mode
@@ -171,7 +178,9 @@ router.post('/', async (req, res) => {
 			automationConfig.directLinkURL = directLinkURL;
 		}
 
-		const modeText = isDirectLinkMode ? 'direct link views' : 'enhanced ad clicking';
+		const modeText = isDirectLinkMode ? 
+			(isContinuous ? 'continuous direct link views' : 'direct link views') : 
+			'enhanced ad clicking';
 		console.log(`🚀 Starting automation with ${modeText}...`);
 		
 		runAutomation(automationConfig).catch((err) => {

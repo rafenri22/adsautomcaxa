@@ -142,6 +142,40 @@
 				background: rgba(255, 255, 255, 0.15);
 			}
 
+			/* Checkbox styling */
+			.checkbox-container {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-top: 15px;
+				padding: 12px 15px;
+				background: rgba(255, 255, 255, 0.05);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				border-radius: 10px;
+				cursor: pointer;
+				transition: all 0.3s ease;
+			}
+
+			.checkbox-container:hover {
+				background: rgba(255, 255, 255, 0.1);
+			}
+
+			.checkbox-container input[type="checkbox"] {
+				width: 20px;
+				height: 20px;
+				margin: 0;
+				cursor: pointer;
+				accent-color: #4caf50;
+			}
+
+			.checkbox-label {
+				color: #ffffff;
+				font-weight: 500;
+				font-size: 14px;
+				cursor: pointer;
+				margin: 0;
+			}
+
 			button {
 				margin-top: 20px;
 				background: linear-gradient(135deg, #4caf50, #45a049);
@@ -273,6 +307,13 @@
 				color: #2196f3;
 				font-weight: bold;
 				text-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
+			}
+
+			/* Continuous mode styling */
+			.continuous-highlight {
+				color: #ff9800;
+				font-weight: bold;
+				text-shadow: 0 0 5px rgba(255, 152, 0, 0.5);
 			}
 
 			/* Device support info */
@@ -518,7 +559,8 @@
 			.progress-text,
 			.cycle-text,
 			.completed-text,
-			.failed-text {
+			.failed-text,
+			.total-text {
 				font-size: 14px;
 				font-weight: 500;
 				color: #ffffff;
@@ -547,6 +589,11 @@
 
 			.success-text {
 				color: #2196f3;
+				font-weight: bold;
+			}
+
+			.total-text {
+				color: #ff9800;
 				font-weight: bold;
 			}
 
@@ -610,7 +657,8 @@
 				.progress-text,
 				.cycle-text,
 				.completed-text,
-				.failed-text {
+				.failed-text,
+				.total-text {
 					font-size: 13px;
 				}
 
@@ -981,8 +1029,8 @@
 							<li>✅ <span class="direct-highlight">Human-like browsing simulation</span> - Realistic mouse movements and scrolling</li>
 							<li>✅ <span class="direct-highlight">Full page load waiting</span> - Ensures all content is loaded</li>
 							<li>✅ <span class="direct-highlight">Reading behavior simulation</span> - Mimics real user engagement</li>
-							<li>✅ <span class="direct-highlight">Multiple concurrent views</span> - Up to 50 simultaneous browsers</li>
-							<li>✅ <span class="direct-highlight">Configurable view duration</span> - Set exactly how long each visit lasts</li>
+							<li>✅ <span class="continuous-highlight">Continuous Looping System</span> - Runs indefinitely until stopped</li>
+							<li>✅ <span class="continuous-highlight">Smart Browser Management</span> - Replaces completed browsers with new ones</li>
 						</ul>
 					</div>
 
@@ -997,7 +1045,7 @@
 						/>
 						<small>Direct URL to visit - no proxy needed, loads directly for maximum compatibility</small>
 
-						<label for="directLinkViews">Number of Views:</label>
+						<label for="directLinkViews">Concurrent Browser Limit:</label>
 						<input
 							type="number"
 							name="directLinkViews"
@@ -1007,7 +1055,13 @@
 							value="10"
 							required
 						/>
-						<small>Total number of concurrent views (instances) to run simultaneously</small>
+						<small>Maximum number of browsers running simultaneously (others queue automatically)</small>
+
+						<div class="checkbox-container" onclick="toggleContinuous()">
+							<input type="checkbox" id="continuousMode" name="continuousMode" checked>
+							<label class="checkbox-label" for="continuousMode">🔄 Continuous Mode - Run indefinitely until stopped</label>
+						</div>
+						<small>When enabled, new browsers automatically replace completed ones in an infinite loop</small>
 
 						<label for="directMinTime">Minimum View Duration (seconds):</label>
 						<input
@@ -1106,23 +1160,31 @@
 			<div class="progress-indicator" id="progressIndicator">
 				<div class="progress-sections">
 					<div class="progress-section">
-						<div class="section-title">Progress & Cycle</div>
+						<div class="section-title">Progress & Mode</div>
 						<div class="section-content">
 							<div class="status-row">
 								<span class="progress-text" id="progressText">Progress: 0%</span>
-								<span class="cycle-text" id="cycleText">Current Cycle: 1</span>
+								<span class="cycle-text" id="modeText">Mode: Ready</span>
 							</div>
 						</div>
 					</div>
 					<div class="progress-section">
-						<div class="section-title">Profile Status</div>
+						<div class="section-title">Browser Status</div>
 						<div class="section-content">
 							<div class="status-row">
 								<span class="completed-text" id="completedText"
 									>Completed: 0/0</span
 								>
-								<span class="success-text" id="successText">Success: 0</span>
+								<span class="success-text" id="successText">Active: 0</span>
 								<span class="failed-text" id="failedText">Failed: 0</span>
+							</div>
+						</div>
+					</div>
+					<div class="progress-section">
+						<div class="section-title">Total Views</div>
+						<div class="section-content">
+							<div class="status-row">
+								<span class="total-text" id="totalText">Total Views: 0</span>
 							</div>
 						</div>
 					</div>
@@ -1170,10 +1232,11 @@
 			const progressIndicator = document.getElementById('progressIndicator');
 			const progressText = document.getElementById('progressText');
 			const progressFill = document.getElementById('progressFill');
-			const cycleText = document.getElementById('cycleText');
+			const modeText = document.getElementById('modeText');
 			const completedText = document.getElementById('completedText');
 			const failedText = document.getElementById('failedText');
 			const successText = document.getElementById('successText');
+			const totalText = document.getElementById('totalText');
 
 			// Mode switching functionality
 			let currentMode = 'ad'; // Default to ad mode
@@ -1195,6 +1258,12 @@
 				} else {
 					statusDiv.innerText = 'Status: Ready for direct link traffic generation...';
 				}
+			}
+
+			// Continuous mode toggle
+			function toggleContinuous() {
+				const checkbox = document.getElementById('continuousMode');
+				checkbox.checked = !checkbox.checked;
 			}
 
 			// Popup elements
@@ -1235,9 +1304,9 @@
 							currentCycle = data.cycle || 1;
 
 							// Update cycle display
-							const cycleTextElement = document.getElementById('cycleText');
-							if (cycleTextElement) {
-								cycleTextElement.textContent = `Current Cycle: ${data.cycle}`;
+							const modeTextElement = document.getElementById('modeText');
+							if (modeTextElement) {
+								modeTextElement.textContent = `Cycle: ${data.cycle}`;
 							}
 						} else if (data.type === 'status_change' && data.profileIndex) {
 							// Handle real-time status updates
@@ -1289,7 +1358,7 @@
 
 				// Update logs title based on mode
 				if (mode === 'direct') {
-					logsTitle.textContent = '📊 Direct Link Traffic Logs - Real Page Views';
+					logsTitle.textContent = '📊 Direct Link Traffic Logs - Continuous Views';
 				} else {
 					logsTitle.textContent = '📊 LEGIT Ad Traffic Logs - Real Network Interaction';
 				}
@@ -1299,10 +1368,10 @@
 					logItem.className = 'profile-log-item';
 					logItem.innerHTML = `
 						<div class="profile-log-header">
-							<div class="profile-log-title">${mode === 'direct' ? 'View' : 'Profile'} ${i} <span class="profile-time" id="profileTime${i}"></span></div>
+							<div class="profile-log-title">${mode === 'direct' ? 'Browser' : 'Profile'} ${i} <span class="profile-time" id="profileTime${i}"></span></div>
 							<div class="profile-log-status waiting" id="profileStatus${i}">Waiting</div>
 						</div>
-						<textarea class="profile-log-area" id="profileLog${i}" readonly placeholder="Waiting for ${mode === 'direct' ? 'direct link traffic' : 'LEGIT ad traffic'} automation to start..."></textarea>
+						<textarea class="profile-log-area" id="profileLog${i}" readonly placeholder="Waiting for ${mode === 'direct' ? 'continuous direct link traffic' : 'LEGIT ad traffic'} automation to start..."></textarea>
 					`;
 					profileLogsGrid.appendChild(logItem);
 
@@ -1528,21 +1597,17 @@
 
 					if (data.status === 'completed') {
 						const modeText = currentMode === 'direct' ? 'direct link views' : 'LEGIT ad traffic';
-						statusDiv.innerText = `Status: ${modeText} completed ✅ (${
-							data.completedWindows
-						}/${data.totalWindows} profiles completed, ${
-							data.successWindows || 0
-						} successful, ${data.failedWindows || 0} failed across all cycles)`;
+						statusDiv.innerText = `Status: ${modeText} completed ✅`;
 						setAutomationState(false);
 					} else if (data.activeWindows > 0) {
 						// Create status with only active window details
 						const modeText = currentMode === 'direct' ? 'direct link traffic' : 'LEGIT ad traffic';
-						let statusText = `Running: ${data.activeWindows} profiles actively generating ${modeText}`;
+						let statusText = `Running: ${data.activeWindows} browsers actively generating ${modeText}`;
 
 						// Add active window details in compact format
 						if (data.activeWindowDetails && data.activeWindowDetails.length > 0) {
 							const activeDetails = data.activeWindowDetails
-								.map((w) => `P${w.windowIndex}(C${w.cycle})`)
+								.map((w) => `B${w.windowIndex}`)
 								.join(', ');
 
 							// Update profile times in log headers
@@ -1551,13 +1616,22 @@
 
 						statusDiv.innerText = statusText;
 
-						// Update progress bar
-						progressFill.style.width = `${data.progress}%`;
-						progressText.textContent = `Progress: ${data.progress}%`;
-						cycleText.textContent = `Current Cycle: ${data.currentCycle || 1}`;
-						completedText.textContent = `Completed: ${data.completedWindows}/${data.totalWindows}`;
-						successText.textContent = `Success: ${data.successWindows || 0}`;
+						// Update progress bar and sections
+						if (currentMode === 'direct' && data.continuousMode) {
+							// Continuous mode - show different metrics
+							modeText.textContent = 'Mode: Continuous';
+							progressFill.style.width = '100%'; // Always 100% in continuous mode
+							progressText.textContent = 'Continuous Mode';
+						} else {
+							progressFill.style.width = `${data.progress}%`;
+							progressText.textContent = `Progress: ${data.progress}%`;
+							modeText.textContent = `Mode: ${currentMode === 'direct' ? 'Direct Views' : 'Ad Traffic'}`;
+						}
+						
+						completedText.textContent = `Completed: ${data.completedWindows || 0}`;
+						successText.textContent = `Active: ${data.activeWindows || 0}`;
 						failedText.textContent = `Failed: ${data.failedWindows || 0}`;
+						totalText.textContent = `Total Views: ${data.totalViews || 0}`;
 
 						setAutomationState(true);
 					} else if (data.status === 'idle') {
@@ -1567,7 +1641,7 @@
 						currentCycle = 1; // Reset cycle counter to 1
 					} else {
 						const modeText = currentMode === 'direct' ? 'direct link traffic' : 'LEGIT ad traffic';
-						statusDiv.innerText = `Status: Preparing ${modeText} automation cycles...`;
+						statusDiv.innerText = `Status: Preparing ${modeText} automation...`;
 						setAutomationState(true);
 					}
 
@@ -1588,9 +1662,9 @@
 					<ul style="color: #ffffff; margin-left: 20px; margin-bottom: 20px;">
 						<li>Stop all ${currentMode === 'direct' ? 'direct link viewing' : 'LEGIT ad clicking'} activities</li>
 						<li>Close all running browser windows</li>
-						<li>End the current traffic automation cycle</li>
+						<li>End the current traffic automation ${currentMode === 'direct' ? 'loop' : 'cycle'}</li>
 					</ul>
-					<p style="color: #4caf50; font-weight: 600;">Any completed profiles and ${currentMode === 'direct' ? 'views' : 'LEGIT ad clicks'} will be preserved.</p>
+					<p style="color: #4caf50; font-weight: 600;">Any completed ${currentMode === 'direct' ? 'views' : 'profiles'} and traffic will be preserved.</p>
 				`;
 
 				showPopup(`🛑 Stop ${modeText}`, stopContent, 'Stop Traffic', true);
@@ -1642,7 +1716,8 @@
 					minWaitTime: parseInt(formData.get('directMinTime')),
 					maxWaitTime: parseInt(formData.get('directMaxTime')),
 					directLinkViews: parseInt(formData.get('directLinkViews')),
-					directLinkURL: formData.get('directLinkURL')
+					directLinkURL: formData.get('directLinkURL'),
+					continuousMode: formData.get('continuousMode') === 'on'
 				};
 				await handleAutomationStart(payload, 'direct');
 			});
@@ -1662,16 +1737,20 @@
 						<span class="data-value">${payload.browser} (Chrome/Edge + 30% Mobile)</span>
 					</div>
 					<div class="data-item">
-						<span class="data-label">Total Views:</span>
-						<span class="data-value">${payload.directLinkViews || payload.profilesAtOnce}</span>
+						<span class="data-label">Concurrent Limit:</span>
+						<span class="data-value">${payload.directLinkViews || payload.profilesAtOnce} browsers</span>
 					</div>
 					<div class="data-item">
 						<span class="data-label">View Duration:</span>
 						<span class="data-value">${payload.minWaitTime}-${payload.maxWaitTime}s per view</span>
 					</div>
+					<div class="data-item">
+						<span class="data-label">Mode:</span>
+						<span class="data-value">${payload.continuousMode ? 'Continuous (Infinite Loop)' : 'One-time Run'}</span>
+					</div>
 					<p style="margin-top: 20px; color: #2196f3; font-weight: 600;">
-						🔗 Mode: Direct Link Views<br>
-						🚀 Features: Pure page views, human-like browsing simulation, natural behavior patterns
+						🔗 Mode: ${payload.continuousMode ? 'Continuous Direct Link Views' : 'Single-Run Direct Views'}<br>
+						🚀 Features: ${payload.continuousMode ? 'Infinite looping, auto-replacement of completed browsers' : 'Pure page views, human-like browsing simulation'}
 					</p>
 				` : `
 					<p style="margin-bottom: 20px; color: #ff9800; font-weight: 600;">🎯 LEGIT Ad Traffic Configuration:</p>
@@ -1713,7 +1792,9 @@
 
 					// Immediately set automation state to prevent button flickering
 					setAutomationState(true);
-					const modeStatusText = mode === 'direct' ? 'direct link views' : 'LEGIT ad traffic with focused network targeting';
+					const modeStatusText = mode === 'direct' ? 
+						(payload.continuousMode ? 'continuous direct link views' : 'direct link views') : 
+						'LEGIT ad traffic with focused network targeting';
 					statusDiv.innerText = `Status: Starting ${modeStatusText}...`;
 
 					try {
@@ -1729,8 +1810,10 @@
 							// Clear any existing logs and add initial messages
 							clearAllProfileLogs();
 							for (let i = 1; i <= profilesCount; i++) {
-								const entityName = mode === 'direct' ? 'View' : 'Profile';
-								const modeFeature = mode === 'direct' ? 'direct link traffic' : 'LEGIT ad network targeting';
+								const entityName = mode === 'direct' ? 'Browser' : 'Profile';
+								const modeFeature = mode === 'direct' ? 
+									(payload.continuousMode ? 'continuous direct link traffic' : 'direct link traffic') : 
+									'LEGIT ad network targeting';
 								
 								appendProfileLog(i, `🚀 Starting ${entityName} ${i}`);
 								appendProfileLog(i, `🎯 ${mode === 'direct' ? 'Direct link' : 'LEGIT ad'} ${modeFeature} enabled`);
@@ -1739,6 +1822,9 @@
 									appendProfileLog(i, `📊 ProfitableRate & HighPerformance detection active`);
 								} else {
 									appendProfileLog(i, `📊 Human-like browsing simulation active`);
+									if (payload.continuousMode) {
+										appendProfileLog(i, `🔄 Continuous mode - will auto-restart when completed`);
+									}
 								}
 								
 								appendProfileLog(i, `⏳ Waiting for automation to start...`);
