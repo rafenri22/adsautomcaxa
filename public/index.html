@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Automation Controller - LEGIT Ad Traffic</title>
+		<title>Nyoba Bot Ads</title>
 		<style>
 			body {
 				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -60,6 +60,51 @@
 				font-size: 1.2em;
 				margin-bottom: 20px;
 				font-weight: 500;
+			}
+
+			/* Mode Toggle */
+			.mode-toggle {
+				display: flex;
+				justify-content: center;
+				margin-bottom: 30px;
+				background: rgba(255, 255, 255, 0.05);
+				border-radius: 15px;
+				padding: 10px;
+				border: 1px solid rgba(255, 255, 255, 0.1);
+			}
+
+			.mode-btn {
+				flex: 1;
+				padding: 15px 20px;
+				background: transparent;
+				color: #ffffff;
+				border: none;
+				border-radius: 10px;
+				cursor: pointer;
+				font-size: 16px;
+				font-weight: 600;
+				transition: all 0.3s ease;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+			}
+
+			.mode-btn.active {
+				background: linear-gradient(135deg, #4caf50, #45a049);
+				box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+				transform: translateY(-2px);
+			}
+
+			.mode-btn:not(.active):hover {
+				background: rgba(255, 255, 255, 0.1);
+			}
+
+			/* Mode-specific content */
+			.mode-content {
+				display: none;
+			}
+
+			.mode-content.active {
+				display: block;
 			}
 
 			label {
@@ -165,8 +210,26 @@
 			}
 
 			#blogURL,
-			#ProxyURL {
+			#ProxyURL,
+			#directLinkURL {
 				color: #00ffd2;
+			}
+
+			/* Direct Link specific styling */
+			.direct-link-info {
+				background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(156, 39, 176, 0.1));
+				border: 2px solid rgba(33, 150, 243, 0.4);
+				border-radius: 15px;
+				padding: 20px;
+				margin: 20px 0;
+				box-shadow: 0 10px 30px rgba(33, 150, 243, 0.2);
+			}
+
+			.direct-link-info h3 {
+				color: #2196f3;
+				margin-top: 0;
+				font-size: 1.3em;
+				text-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
 			}
 
 			/* LEGIT ad targeting info */
@@ -186,12 +249,14 @@
 				text-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
 			}
 
-			.ad-info ul {
+			.ad-info ul,
+			.direct-link-info ul {
 				margin: 15px 0;
 				padding-left: 25px;
 			}
 
-			.ad-info li {
+			.ad-info li,
+			.direct-link-info li {
 				color: #ffffff;
 				margin: 8px 0;
 				font-size: 14px;
@@ -202,6 +267,12 @@
 				color: #4caf50;
 				font-weight: bold;
 				text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+			}
+
+			.direct-highlight {
+				color: #2196f3;
+				font-weight: bold;
+				text-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
 			}
 
 			/* Device support info */
@@ -563,6 +634,11 @@
 					grid-template-columns: 1fr;
 					gap: 10px;
 				}
+
+				.mode-toggle {
+					flex-direction: column;
+					gap: 10px;
+				}
 			}
 
 			/* Small text styling */
@@ -760,21 +836,226 @@
 	</head>
 	<body>
 		<div class="main-container">
-			<h2>🚀 LEGIT Ad Traffic Controller</h2>
-			<div class="subtitle">🎯 Focused ProfitableRate & HighPerformance Ad Clicking</div>
+			<h2>🚀 LEGIT Traffic Controller</h2>
+			<div class="subtitle">🎯 ProfitableRate Ad Clicks & Direct Link Views</div>
+
+			<!-- Mode Toggle -->
+			<div class="mode-toggle">
+				<button class="mode-btn active" id="adModeBtn" onclick="switchMode('ad')">
+					🎯 AD CLICKING MODE
+				</button>
+				<button class="mode-btn" id="directModeBtn" onclick="switchMode('direct')">
+					🔗 DIRECT LINK VIEWER
+				</button>
+			</div>
 
 			<div class="form-container">
-				<div class="ad-info">
-					<h3>🎯 LEGIT Ad Network Targeting</h3>
-					<ul>
-						<li>✅ <span class="legit-highlight">Direct ProfitableRateCPM link detection</span> - Clicks real ad URLs</li>
-						<li>✅ <span class="legit-highlight">HighPerformanceFormat banner targeting</span> - 320x50 ads specifically</li>
-						<li>✅ <span class="legit-highlight">Script-generated ad element detection</span> - From loaded JS ads</li>
-						<li>✅ <span class="legit-highlight">Social bar & popunder interaction</span> - pl27406930, pl27406938 scripts</li>
-						<li>✅ <span class="legit-highlight">Data-key specific targeting</span> - dac5bd782390c09ca3783e4361641fe1, bed062db9e271d1ad41b99f36e2c623c</li>
-						<li>✅ <span class="legit-highlight">Extended popup wait time</span> - Ensures traffic registration</li>
-						<li>✅ <span class="legit-highlight">Natural browsing patterns</span> - Realistic user behavior simulation</li>
-					</ul>
+				<!-- Ad Clicking Mode -->
+				<div class="mode-content active" id="adModeContent">
+					<div class="ad-info">
+						<h3>🎯 LEGIT Ad Network Targeting</h3>
+						<ul>
+							<li>✅ <span class="legit-highlight">Direct ProfitableRateCPM link detection</span> - Clicks real ad URLs</li>
+							<li>✅ <span class="legit-highlight">HighPerformanceFormat banner targeting</span> - 320x50 ads specifically</li>
+							<li>✅ <span class="legit-highlight">Script-generated ad element detection</span> - From loaded JS ads</li>
+							<li>✅ <span class="legit-highlight">Social bar & popunder interaction</span> - pl27406930, pl27406938 scripts</li>
+							<li>✅ <span class="legit-highlight">Data-key specific targeting</span> - dac5bd782390c09ca3783e4361641fe1, bed062db9e271d1ad41b99f36e2c623c</li>
+							<li>✅ <span class="legit-highlight">Extended popup wait time</span> - Ensures traffic registration</li>
+							<li>✅ <span class="legit-highlight">Natural browsing patterns</span> - Realistic user behavior simulation</li>
+						</ul>
+					</div>
+
+					<form id="automationForm">
+						<label for="blogURL">Target Website URL:</label>
+						<input
+							type="text"
+							name="blogURL"
+							id="blogURL"
+							value="https://trijayaagunglestari.web.id"
+							required
+						/>
+						<small>Target website with LEGIT ad networks for proper traffic counting</small>
+
+						<label for="ProxyURL">Proxy URL (Optional):</label>
+						<input
+							type="text"
+							name="ProxyURL"
+							id="ProxyURL"
+							value="http://api.scrape.do?token=17816104c7834853af9ebdae785d3a756ce15798bcc&url="
+						/>
+						<small>Used for geo-targeting and fingerprinting. Website loads directly for full functionality.</small>
+
+						<label for="combinedURL">Reference URL (Auto-generated)</label>
+						<textarea
+							id="combinedURL"
+							name="combinedURL"
+							disabled
+							style="
+								width: 100%;
+								font-family: monospace;
+								resize: vertical;
+								min-height: 100px;
+								max-height: 120px;
+								overflow: auto;
+							"
+						></textarea>
+
+						<label for="browser">Browser Preference:</label>
+						<select name="browser" id="browser">
+							<option value="random">Random (Chrome/Edge)</option>
+							<option value="chromium">Chrome Only</option>
+							<option value="webkit">Edge Only</option>
+						</select>
+						<small>Chrome and Edge only for better ad compatibility. 30% mobile traffic included.</small>
+
+						<label for="openCount">Number of Cycles:</label>
+						<input
+							type="number"
+							name="openCount"
+							id="openCount"
+							min="1"
+							max="20"
+							value="3"
+							required
+						/>
+
+						<label for="profilesAtOnce">Profiles per Cycle:</label>
+						<input
+							type="number"
+							name="profilesAtOnce"
+							id="profilesAtOnce"
+							min="1"
+							max="10"
+							value="2"
+							required
+						/>
+
+						<label for="timeout">Website Loading Timeout (seconds):</label>
+						<input
+							type="number"
+							name="timeout"
+							id="timeout"
+							min="10"
+							max="120"
+							value="40"
+							required
+						/>
+						<small>Extended timeout for complete ad script loading and execution</small>
+
+						<label for="minWaitTime">Minimum Session Time (seconds):</label>
+						<input
+							type="number"
+							name="minWaitTime"
+							id="minWaitTime"
+							min="30"
+							max="120"
+							value="75"
+							required
+						/>
+						<small>Extended time for LEGIT ad detection and clicking (60% of time dedicated to ads)</small>
+
+						<label for="maxWaitTime">Maximum Session Time (seconds):</label>
+						<input
+							type="number"
+							name="maxWaitTime"
+							id="maxWaitTime"
+							min="30"
+							max="120"
+							value="90"
+							required
+						/>
+						<small>Maximum session time with comprehensive LEGIT ad interaction and traffic registration</small>
+
+						<div class="control-buttons">
+							<button type="submit" id="startButton">🚀 Start LEGIT Ad Traffic</button>
+						</div>
+					</form>
+				</div>
+
+				<!-- Direct Link Viewer Mode -->
+				<div class="mode-content" id="directModeContent">
+					<div class="direct-link-info">
+						<h3>🔗 Direct Link Viewer</h3>
+						<ul>
+							<li>✅ <span class="direct-highlight">Direct traffic to specific URLs</span> - Pure page views without ads</li>
+							<li>✅ <span class="direct-highlight">Human-like browsing simulation</span> - Realistic mouse movements and scrolling</li>
+							<li>✅ <span class="direct-highlight">Full page load waiting</span> - Ensures all content is loaded</li>
+							<li>✅ <span class="direct-highlight">Reading behavior simulation</span> - Mimics real user engagement</li>
+							<li>✅ <span class="direct-highlight">Multiple concurrent views</span> - Up to 50 simultaneous browsers</li>
+							<li>✅ <span class="direct-highlight">Configurable view duration</span> - Set exactly how long each visit lasts</li>
+						</ul>
+					</div>
+
+					<form id="directLinkForm">
+						<label for="directLinkURL">Direct Link URL:</label>
+						<input
+							type="text"
+							name="directLinkURL"
+							id="directLinkURL"
+							value="https://www.profitableratecpm.com/tttah0a7?key=bed062db9e271d1ad41b99f36e2c623c"
+							required
+						/>
+						<small>Direct URL to visit - no proxy needed, loads directly for maximum compatibility</small>
+
+						<label for="directLinkViews">Number of Views:</label>
+						<input
+							type="number"
+							name="directLinkViews"
+							id="directLinkViews"
+							min="1"
+							max="50"
+							value="10"
+							required
+						/>
+						<small>Total number of concurrent views (instances) to run simultaneously</small>
+
+						<label for="directMinTime">Minimum View Duration (seconds):</label>
+						<input
+							type="number"
+							name="directMinTime"
+							id="directMinTime"
+							min="5"
+							max="300"
+							value="30"
+							required
+						/>
+
+						<label for="directMaxTime">Maximum View Duration (seconds):</label>
+						<input
+							type="number"
+							name="directMaxTime"
+							id="directMaxTime"
+							min="5"
+							max="300"
+							value="60"
+							required
+						/>
+						<small>Random duration between min and max for each view to appear more natural</small>
+
+						<label for="directBrowser">Browser Preference:</label>
+						<select name="directBrowser" id="directBrowser">
+							<option value="random">Random (Chrome/Edge)</option>
+							<option value="chromium">Chrome Only</option>
+							<option value="webkit">Edge Only</option>
+						</select>
+						<small>Browser choice for direct link views. Includes mobile traffic simulation (30%)</small>
+
+						<label for="directTimeout">Page Load Timeout (seconds):</label>
+						<input
+							type="number"
+							name="directTimeout"
+							id="directTimeout"
+							min="10"
+							max="120"
+							value="30"
+							required
+						/>
+						<small>Maximum time to wait for page to fully load before starting interaction</small>
+
+						<div class="control-buttons">
+							<button type="submit" id="startDirectButton">🔗 Start Direct Link Views</button>
+						</div>
+					</form>
 				</div>
 
 				<div class="device-info">
@@ -800,112 +1081,6 @@
 						</div>
 					</div>
 				</div>
-
-				<form id="automationForm">
-					<label for="blogURL">Target Website URL:</label>
-					<input
-						type="text"
-						name="blogURL"
-						id="blogURL"
-						value="https://trijayaagunglestari.web.id"
-						required
-					/>
-					<small>Target website with LEGIT ad networks for proper traffic counting</small>
-
-					<label for="ProxyURL">Proxy URL (Optional):</label>
-					<input
-						type="text"
-						name="ProxyURL"
-						id="ProxyURL"
-						value="http://api.scrape.do?token=17816104c7834853af9ebdae785d3a756ce15798bcc&url="
-					/>
-					<small>Used for geo-targeting and fingerprinting. Website loads directly for full functionality.</small>
-
-					<label for="combinedURL">Reference URL (Auto-generated)</label>
-					<textarea
-						id="combinedURL"
-						name="combinedURL"
-						disabled
-						style="
-							width: 100%;
-							font-family: monospace;
-							resize: vertical;
-							min-height: 100px;
-							max-height: 120px;
-							overflow: auto;
-						"
-					></textarea>
-
-					<label for="browser">Browser Preference:</label>
-					<select name="browser" id="browser">
-						<option value="random">Random (Chrome/Edge)</option>
-						<option value="chromium">Chrome Only</option>
-						<option value="webkit">Edge Only</option>
-					</select>
-					<small>Chrome and Edge only for better ad compatibility. 30% mobile traffic included.</small>
-
-					<label for="openCount">Number of Cycles:</label>
-					<input
-						type="number"
-						name="openCount"
-						id="openCount"
-						min="1"
-						max="20"
-						value="3"
-						required
-					/>
-
-					<label for="profilesAtOnce">Profiles per Cycle:</label>
-					<input
-						type="number"
-						name="profilesAtOnce"
-						id="profilesAtOnce"
-						min="1"
-						max="10"
-						value="2"
-						required
-					/>
-
-					<label for="timeout">Website Loading Timeout (seconds):</label>
-					<input
-						type="number"
-						name="timeout"
-						id="timeout"
-						min="10"
-						max="120"
-						value="40"
-						required
-					/>
-					<small>Extended timeout for complete ad script loading and execution</small>
-
-					<label for="minWaitTime">Minimum Session Time (seconds):</label>
-					<input
-						type="number"
-						name="minWaitTime"
-						id="minWaitTime"
-						min="30"
-						max="120"
-						value="75"
-						required
-					/>
-					<small>Extended time for LEGIT ad detection and clicking (60% of time dedicated to ads)</small>
-
-					<label for="maxWaitTime">Maximum Session Time (seconds):</label>
-					<input
-						type="number"
-						name="maxWaitTime"
-						id="maxWaitTime"
-						min="30"
-						max="120"
-						value="90"
-						required
-					/>
-					<small>Maximum session time with comprehensive LEGIT ad interaction and traffic registration</small>
-
-					<div class="control-buttons">
-						<button type="submit" id="startButton">🚀 Start LEGIT Ad Traffic</button>
-					</div>
-				</form>
 			</div>
 
 			<!-- Stop button outside the form container -->
@@ -924,7 +1099,7 @@
 					font-size: large;
 				"
 			>
-				🛑 Stop LEGIT Traffic
+				🛑 Stop Traffic
 			</button>
 
 			<!-- Progress indicator -->
@@ -957,11 +1132,11 @@
 				</div>
 			</div>
 
-			<div id="status">Status: Ready for LEGIT ad traffic generation with focused network targeting...</div>
+			<div id="status">Status: Ready for traffic generation - Choose mode above...</div>
 
 			<!-- Profile logs container -->
 			<div class="profile-logs-container" id="profileLogsContainer">
-				<h3>📊 LEGIT Ad Traffic Logs - Real Network Interaction</h3>
+				<h3 id="logsTitle">📊 LEGIT Ad Traffic Logs - Real Network Interaction</h3>
 				<div class="profile-logs-grid" id="profileLogsGrid"></div>
 			</div>
 		</div>
@@ -985,10 +1160,13 @@
 
 		<script>
 			const form = document.getElementById('automationForm');
+			const directForm = document.getElementById('directLinkForm');
 			const statusDiv = document.getElementById('status');
 			const startButton = document.getElementById('startButton');
+			const startDirectButton = document.getElementById('startDirectButton');
 			const stopButton = document.getElementById('stopButton');
 			const profileLogsGrid = document.getElementById('profileLogsGrid');
+			const logsTitle = document.getElementById('logsTitle');
 			const progressIndicator = document.getElementById('progressIndicator');
 			const progressText = document.getElementById('progressText');
 			const progressFill = document.getElementById('progressFill');
@@ -996,6 +1174,28 @@
 			const completedText = document.getElementById('completedText');
 			const failedText = document.getElementById('failedText');
 			const successText = document.getElementById('successText');
+
+			// Mode switching functionality
+			let currentMode = 'ad'; // Default to ad mode
+
+			function switchMode(mode) {
+				currentMode = mode;
+				
+				// Update button states
+				document.getElementById('adModeBtn').classList.toggle('active', mode === 'ad');
+				document.getElementById('directModeBtn').classList.toggle('active', mode === 'direct');
+				
+				// Update content visibility
+				document.getElementById('adModeContent').classList.toggle('active', mode === 'ad');
+				document.getElementById('directModeContent').classList.toggle('active', mode === 'direct');
+				
+				// Update status text
+				if (mode === 'ad') {
+					statusDiv.innerText = 'Status: Ready for LEGIT ad traffic generation with focused network targeting...';
+				} else {
+					statusDiv.innerText = 'Status: Ready for direct link traffic generation...';
+				}
+			}
 
 			// Popup elements
 			const popupOverlay = document.getElementById('popupOverlay');
@@ -1081,21 +1281,28 @@
 			}
 
 			// Function to create profile log areas for current cycle
-			function createProfileLogsForCycle(profilesCount, cycle) {
+			function createProfileLogsForCycle(profilesCount, cycle, mode = 'ad') {
 				profileLogsGrid.innerHTML = '';
 				profileLogs.clear();
 				currentProfilesCount = profilesCount;
 				currentCycleProfiles = profilesCount;
+
+				// Update logs title based on mode
+				if (mode === 'direct') {
+					logsTitle.textContent = '📊 Direct Link Traffic Logs - Real Page Views';
+				} else {
+					logsTitle.textContent = '📊 LEGIT Ad Traffic Logs - Real Network Interaction';
+				}
 
 				for (let i = 1; i <= profilesCount; i++) {
 					const logItem = document.createElement('div');
 					logItem.className = 'profile-log-item';
 					logItem.innerHTML = `
 						<div class="profile-log-header">
-							<div class="profile-log-title">Profile ${i} <span class="profile-time" id="profileTime${i}"></span></div>
+							<div class="profile-log-title">${mode === 'direct' ? 'View' : 'Profile'} ${i} <span class="profile-time" id="profileTime${i}"></span></div>
 							<div class="profile-log-status waiting" id="profileStatus${i}">Waiting</div>
 						</div>
-						<textarea class="profile-log-area" id="profileLog${i}" readonly placeholder="Waiting for LEGIT ad traffic automation to start..."></textarea>
+						<textarea class="profile-log-area" id="profileLog${i}" readonly placeholder="Waiting for ${mode === 'direct' ? 'direct link traffic' : 'LEGIT ad traffic'} automation to start..."></textarea>
 					`;
 					profileLogsGrid.appendChild(logItem);
 
@@ -1105,8 +1312,8 @@
 			}
 
 			// Function to create profile log areas (for initial setup)
-			function createProfileLogs(profilesCount) {
-				createProfileLogsForCycle(profilesCount, 1);
+			function createProfileLogs(profilesCount, mode = 'ad') {
+				createProfileLogsForCycle(profilesCount, 1, mode);
 			}
 
 			// Function to append log to specific profile
@@ -1187,7 +1394,8 @@
 							currentCycleProfiles = logsData.profilesPerCycle;
 							createProfileLogsForCycle(
 								logsData.profilesPerCycle,
-								logsData.currentCycle
+								logsData.currentCycle,
+								currentMode
 							);
 						}
 
@@ -1256,24 +1464,28 @@
 				if (isRunning) {
 					document.body.classList.add('automation-running');
 					startButton.style.display = 'none';
+					startDirectButton.style.display = 'none';
 					stopButton.style.display = 'block';
 					startLogUpdates();
 					connectToLogStream(); // Start SSE connection
 				} else {
 					document.body.classList.remove('automation-running');
 					startButton.style.display = 'block';
+					startDirectButton.style.display = 'block';
 					stopButton.style.display = 'none';
 					stopLogUpdates();
 					disconnectFromLogStream(); // Close SSE connection
 				}
 			}
 
-			// Update combined URL field live
+			// Update combined URL field live (only for ad mode)
 			function updateCombinedURL() {
-				const blogURLValue = document.getElementById('blogURL').value;
-				const proxyURLValue = document.getElementById('ProxyURL').value;
-				document.getElementById('combinedURL').value =
-					proxyURLValue + encodeURIComponent(blogURLValue);
+				if (currentMode === 'ad') {
+					const blogURLValue = document.getElementById('blogURL').value;
+					const proxyURLValue = document.getElementById('ProxyURL').value;
+					document.getElementById('combinedURL').value =
+						proxyURLValue + encodeURIComponent(blogURLValue);
+				}
 			}
 			document.getElementById('blogURL').addEventListener('input', updateCombinedURL);
 			updateCombinedURL();
@@ -1315,15 +1527,17 @@
 					const data = await response.json();
 
 					if (data.status === 'completed') {
-						statusDiv.innerText = `Status: LEGIT ad traffic completed ✅ (${
+						const modeText = currentMode === 'direct' ? 'direct link views' : 'LEGIT ad traffic';
+						statusDiv.innerText = `Status: ${modeText} completed ✅ (${
 							data.completedWindows
 						}/${data.totalWindows} profiles completed, ${
 							data.successWindows || 0
-						} successful with LEGIT ad clicks, ${data.failedWindows || 0} failed across all cycles)`;
+						} successful, ${data.failedWindows || 0} failed across all cycles)`;
 						setAutomationState(false);
 					} else if (data.activeWindows > 0) {
 						// Create status with only active window details
-						let statusText = `Running: ${data.activeWindows} profiles actively generating LEGIT ad traffic`;
+						const modeText = currentMode === 'direct' ? 'direct link traffic' : 'LEGIT ad traffic';
+						let statusText = `Running: ${data.activeWindows} profiles actively generating ${modeText}`;
 
 						// Add active window details in compact format
 						if (data.activeWindowDetails && data.activeWindowDetails.length > 0) {
@@ -1347,11 +1561,13 @@
 
 						setAutomationState(true);
 					} else if (data.status === 'idle') {
-						statusDiv.innerText = 'Status: Ready for LEGIT ad traffic generation with focused network targeting...';
+						const modeText = currentMode === 'direct' ? 'direct link traffic generation' : 'LEGIT ad traffic generation with focused network targeting';
+						statusDiv.innerText = `Status: Ready for ${modeText}...`;
 						setAutomationState(false);
 						currentCycle = 1; // Reset cycle counter to 1
 					} else {
-						statusDiv.innerText = 'Status: Preparing LEGIT ad traffic automation cycles...';
+						const modeText = currentMode === 'direct' ? 'direct link traffic' : 'LEGIT ad traffic';
+						statusDiv.innerText = `Status: Preparing ${modeText} automation cycles...`;
 						setAutomationState(true);
 					}
 
@@ -1365,18 +1581,19 @@
 			// Stop automation button handler
 			stopButton.addEventListener('click', async () => {
 				// Show stop confirmation popup
+				const modeText = currentMode === 'direct' ? 'direct link traffic' : 'LEGIT ad traffic';
 				const stopContent = `
-					<p style="margin-bottom: 20px; color: #f44336; font-weight: 600;">⚠️ Are you sure you want to stop the LEGIT ad traffic?</p>
+					<p style="margin-bottom: 20px; color: #f44336; font-weight: 600;">⚠️ Are you sure you want to stop the ${modeText}?</p>
 					<p style="color: #ff9800; margin-bottom: 15px;">This will:</p>
 					<ul style="color: #ffffff; margin-left: 20px; margin-bottom: 20px;">
-						<li>Stop all LEGIT ad clicking activities</li>
+						<li>Stop all ${currentMode === 'direct' ? 'direct link viewing' : 'LEGIT ad clicking'} activities</li>
 						<li>Close all running browser windows</li>
 						<li>End the current traffic automation cycle</li>
 					</ul>
-					<p style="color: #4caf50; font-weight: 600;">Any completed profiles and LEGIT ad clicks will be preserved.</p>
+					<p style="color: #4caf50; font-weight: 600;">Any completed profiles and ${currentMode === 'direct' ? 'views' : 'LEGIT ad clicks'} will be preserved.</p>
 				`;
 
-				showPopup('🛑 Stop LEGIT Ad Traffic', stopContent, 'Stop Traffic', true);
+				showPopup(`🛑 Stop ${modeText}`, stopContent, 'Stop Traffic', true);
 
 				// Handle stop confirmation
 				popupConfirm.onclick = async () => {
@@ -1391,7 +1608,7 @@
 						const result = await response.json();
 
 						if (result.success) {
-							statusDiv.innerText = 'Status: LEGIT ad traffic automation stopped';
+							statusDiv.innerText = `Status: ${modeText} automation stopped`;
 							setAutomationState(false);
 						} else {
 							console.error(`Failed to stop automation: ${result.error}`);
@@ -1402,13 +1619,61 @@
 				};
 			});
 
+			// Ad Mode Form Handler
 			form.addEventListener('submit', async (e) => {
 				e.preventDefault();
 				const formData = new FormData(form);
 				const payload = Object.fromEntries(formData.entries());
+				await handleAutomationStart(payload, 'ad');
+			});
 
+			// Direct Mode Form Handler  
+			directForm.addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const formData = new FormData(directForm);
+				const payload = {
+					// Transform direct form data to match automation format
+					blogURL: formData.get('directLinkURL'),
+					ProxyURL: '', // No proxy for direct links
+					browser: formData.get('directBrowser'),
+					openCount: 1, // Always 1 cycle for direct links
+					profilesAtOnce: parseInt(formData.get('directLinkViews')),
+					timeout: parseInt(formData.get('directTimeout')),
+					minWaitTime: parseInt(formData.get('directMinTime')),
+					maxWaitTime: parseInt(formData.get('directMaxTime')),
+					directLinkViews: parseInt(formData.get('directLinkViews')),
+					directLinkURL: formData.get('directLinkURL')
+				};
+				await handleAutomationStart(payload, 'direct');
+			});
+
+			// Common automation start handler
+			async function handleAutomationStart(payload, mode) {
 				// Show start confirmation popup
-				const startContent = `
+				const modeText = mode === 'direct' ? 'Direct Link Views' : 'LEGIT Ad Traffic';
+				const startContent = mode === 'direct' ? `
+					<p style="margin-bottom: 20px; color: #ff9800; font-weight: 600;">🔗 Direct Link Traffic Configuration:</p>
+					<div class="data-item">
+						<span class="data-label">Target URL:</span>
+						<span class="data-value">${payload.directLinkURL || payload.blogURL}</span>
+					</div>
+					<div class="data-item">
+						<span class="data-label">Browser:</span>
+						<span class="data-value">${payload.browser} (Chrome/Edge + 30% Mobile)</span>
+					</div>
+					<div class="data-item">
+						<span class="data-label">Total Views:</span>
+						<span class="data-value">${payload.directLinkViews || payload.profilesAtOnce}</span>
+					</div>
+					<div class="data-item">
+						<span class="data-label">View Duration:</span>
+						<span class="data-value">${payload.minWaitTime}-${payload.maxWaitTime}s per view</span>
+					</div>
+					<p style="margin-top: 20px; color: #2196f3; font-weight: 600;">
+						🔗 Mode: Direct Link Views<br>
+						🚀 Features: Pure page views, human-like browsing simulation, natural behavior patterns
+					</p>
+				` : `
 					<p style="margin-bottom: 20px; color: #ff9800; font-weight: 600;">🎯 LEGIT Ad Traffic Configuration:</p>
 					<div class="data-item">
 						<span class="data-label">Target Website:</span>
@@ -1436,19 +1701,20 @@
 					</p>
 				`;
 
-				showPopup('🚀 Start LEGIT Ad Traffic', startContent, 'Start LEGIT Traffic');
+				showPopup(`🚀 Start ${modeText}`, startContent, `Start ${modeText}`);
 
 				// Handle confirmation
 				popupConfirm.onclick = async () => {
 					hidePopup();
 
 					// Get profiles count and create log areas
-					const profilesCount = parseInt(payload.profilesAtOnce) || 2;
-					createProfileLogs(profilesCount);
+					const profilesCount = parseInt(payload.profilesAtOnce) || (mode === 'direct' ? payload.directLinkViews : 2);
+					createProfileLogs(profilesCount, mode);
 
 					// Immediately set automation state to prevent button flickering
 					setAutomationState(true);
-					statusDiv.innerText = 'Status: Starting LEGIT ad traffic with focused network targeting...';
+					const modeStatusText = mode === 'direct' ? 'direct link views' : 'LEGIT ad traffic with focused network targeting';
+					statusDiv.innerText = `Status: Starting ${modeStatusText}...`;
 
 					try {
 						const res = await fetch('/open-url', {
@@ -1463,25 +1729,34 @@
 							// Clear any existing logs and add initial messages
 							clearAllProfileLogs();
 							for (let i = 1; i <= profilesCount; i++) {
-								appendProfileLog(i, `🚀 Starting LEGIT Profile ${i}`);
-								appendProfileLog(i, `🎯 LEGIT ad network targeting enabled`);
-								appendProfileLog(i, `📊 ProfitableRate & HighPerformance detection active`);
+								const entityName = mode === 'direct' ? 'View' : 'Profile';
+								const modeFeature = mode === 'direct' ? 'direct link traffic' : 'LEGIT ad network targeting';
+								
+								appendProfileLog(i, `🚀 Starting ${entityName} ${i}`);
+								appendProfileLog(i, `🎯 ${mode === 'direct' ? 'Direct link' : 'LEGIT ad'} ${modeFeature} enabled`);
+								
+								if (mode === 'ad') {
+									appendProfileLog(i, `📊 ProfitableRate & HighPerformance detection active`);
+								} else {
+									appendProfileLog(i, `📊 Human-like browsing simulation active`);
+								}
+								
 								appendProfileLog(i, `⏳ Waiting for automation to start...`);
 							}
 						} else {
 							console.error(`Failed: ${result.error}`);
 							// Reset state if automation failed to start
 							setAutomationState(false);
-							statusDiv.innerText = 'Status: Failed to start LEGIT ad traffic automation';
+							statusDiv.innerText = `Status: Failed to start ${modeStatusText} automation`;
 						}
 					} catch (err) {
 						console.error(`Error: ${err.message}`);
 						// Reset state if there was an error
 						setAutomationState(false);
-						statusDiv.innerText = 'Status: Error starting LEGIT ad traffic automation';
+						statusDiv.innerText = `Status: Error starting ${modeStatusText} automation`;
 					}
 				};
-			});
+			}
 
 			checkStatus();
 

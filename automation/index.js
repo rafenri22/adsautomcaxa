@@ -44,6 +44,114 @@ function getCycleSpecificIndex(globalIndex, cycle, profilesPerCycle) {
 	return ((globalIndex - 1) % profilesPerCycle) + 1;
 }
 
+// Enhanced direct link viewer functionality
+async function visitDirectLink(page, profileIndex, directURL, duration = 15) {
+	if (!page || page.isClosed()) return;
+	
+	log(`🎯 Starting DIRECT LINK visit: ${directURL}`, profileIndex);
+	
+	try {
+		// Navigate to direct link with realistic behavior
+		log(`🌐 Loading direct link...`, profileIndex);
+		
+		await page.goto(directURL, {
+			waitUntil: 'domcontentloaded',
+			timeout: 30000
+		});
+		
+		// Wait for complete page load
+		await page.waitForLoadState('networkidle', { timeout: 25000 });
+		
+		log(`✅ Direct link loaded successfully`, profileIndex);
+		
+		// Simulate realistic user behavior on the direct link
+		const endTime = Date.now() + (duration * 1000);
+		
+		while (Date.now() < endTime && !page.isClosed()) {
+			try {
+				// Random mouse movements
+				const x = Math.random() * 1200 + 100;
+				const y = Math.random() * 800 + 100;
+				await page.mouse.move(x, y);
+				await page.waitForTimeout(500 + Math.random() * 1000);
+				
+				// Simulate scrolling
+				if (Math.random() < 0.6) {
+					const scrollDirection = Math.random() < 0.7 ? 'down' : 'up';
+					const scrollAmount = Math.random() * 300 + 100;
+					
+					await page.evaluate(({ direction, amount }) => {
+						const currentY = window.scrollY;
+						const targetY = direction === 'down' 
+							? currentY + amount 
+							: Math.max(0, currentY - amount);
+						
+						window.scrollTo({
+							top: targetY,
+							behavior: 'smooth'
+						});
+					}, { direction: scrollDirection, amount: scrollAmount });
+					
+					await page.waitForTimeout(1000 + Math.random() * 2000);
+				}
+				
+				// Click on elements occasionally (but avoid ads to prevent infinite redirects)
+				if (Math.random() < 0.3) {
+					const clickableElements = await page.evaluate(() => {
+						const elements = Array.from(document.querySelectorAll('button, a:not([href*="ads"]):not([href*="click"]), input[type="button"]'));
+						return elements.map(el => {
+							const rect = el.getBoundingClientRect();
+							if (rect.width > 20 && rect.height > 20 && rect.top >= 0 && rect.top <= window.innerHeight) {
+								return {
+									x: rect.left + rect.width / 2,
+									y: rect.top + rect.height / 2,
+									tagName: el.tagName,
+									text: el.textContent ? el.textContent.trim().substring(0, 30) : ''
+								};
+							}
+							return null;
+						}).filter(Boolean);
+					});
+					
+					if (clickableElements.length > 0) {
+						const element = clickableElements[Math.floor(Math.random() * clickableElements.length)];
+						await page.mouse.click(element.x, element.y);
+						log(`👆 Clicked on ${element.tagName}: ${element.text}`, profileIndex);
+						await page.waitForTimeout(2000 + Math.random() * 3000);
+					}
+				}
+				
+				// Reading behavior - pause and focus on content
+				if (Math.random() < 0.4) {
+					await page.evaluate(() => {
+						const headings = document.querySelectorAll('h1, h2, h3, p');
+						if (headings.length > 0) {
+							const heading = headings[Math.floor(Math.random() * headings.length)];
+							heading.scrollIntoView({ behavior: 'smooth', block: 'center' });
+						}
+					});
+					
+					const readingTime = 2000 + Math.random() * 5000;
+					log(`📖 Reading content for ${Math.round(readingTime/1000)}s`, profileIndex);
+					await page.waitForTimeout(readingTime);
+				}
+				
+				// Wait between actions
+				await page.waitForTimeout(1000 + Math.random() * 2000);
+				
+			} catch (actionError) {
+				log(`⚠️ Error during direct link interaction: ${actionError.message}`, profileIndex);
+				await page.waitForTimeout(2000);
+			}
+		}
+		
+		log(`🎉 Direct link visit completed - ${duration}s session`, profileIndex);
+		
+	} catch (error) {
+		log(`❌ Direct link visit failed: ${error.message}`, profileIndex);
+	}
+}
+
 // Enhanced ad detection and clicking with focus on specific ad networks
 async function detectAndClickProfitableRateAds(page, profileIndex, duration = 20) {
 	if (!page || page.isClosed()) return;
@@ -209,15 +317,16 @@ async function detectAndClickProfitableRateAds(page, profileIndex, duration = 20
 						if (Date.now() >= endTime) break;
 						
 						try {
-							// Scroll to ad for visibility
-							await page.evaluate((x, y) => {
+							// Scroll to ad for visibility - FIX: Pass single object parameter
+							await page.evaluate((adData) => {
+								const { x, y } = adData;
 								if (y < 50 || y > window.innerHeight - 50) {
 									window.scrollTo({
 										top: window.scrollY + y - window.innerHeight / 2,
 										behavior: 'smooth'
 									});
 								}
-							}, ad.x, ad.y);
+							}, { x: ad.x, y: ad.y });
 							
 							await page.waitForTimeout(1500 + Math.random() * 2000);
 							
@@ -397,7 +506,8 @@ async function processWindow(
 	proxyURL,
 	waitTime,
 	cycle,
-	timeout = 30
+	timeout = 30,
+	isDirectLinkOnly = false
 ) {
 	let browserInstance = null;
 	let context = null;
@@ -414,7 +524,7 @@ async function processWindow(
 			return;
 		}
 
-		log(`🚀 Opening Profile ${cycleSpecificIndex} (Cycle ${cycle})`, windowIndex);
+		log(`🚀 Opening Profile ${cycleSpecificIndex} (Cycle ${cycle})${isDirectLinkOnly ? ' - DIRECT LINK ONLY' : ''}`, windowIndex);
 		updateProfileStatus(windowIndex, 'waiting');
 
 		// Select browser (only Chrome or Edge)
@@ -618,7 +728,7 @@ async function processWindow(
 			return;
 		}
 
-		log(`🕒 Starting ${waitTime}s LEGIT ad clicking session for Profile ${cycleSpecificIndex}`, windowIndex);
+		log(`🕒 Starting ${waitTime}s ${isDirectLinkOnly ? 'DIRECT LINK' : 'LEGIT ad clicking'} session for Profile ${cycleSpecificIndex}`, windowIndex);
 		updateProfileStatus(windowIndex, 'running');
 
 		// Track this window after successful page load
@@ -662,34 +772,44 @@ async function processWindow(
 			}
 		}, waitTime * 1000);
 
-		// Calculate time distribution - more focus on legit ad clicking
+		// Calculate time distribution based on mode
 		let remainingTime = waitTime;
-		let legitAdTime = Math.min(25, remainingTime * 0.6); // 60% for legit ad clicking
-		let scrollTime = remainingTime - legitAdTime - 3; // Leave buffer
 		
-		if (remainingTime > 10) {
-			log(`⏳ Waiting 3s for ads to load...`, windowIndex);
-			await page.waitForTimeout(3000);
-			remainingTime -= 3;
-		}
-
-		// Phase 1: LEGIT ad detection and clicking focused on ProfitableRate & HighPerformance
-		if (legitAdTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
-			log(`🎯 Phase 1: LEGIT ad clicking for ${legitAdTime}s`, windowIndex);
-			try {
-				await detectAndClickProfitableRateAds(page, windowIndex, legitAdTime);
-			} catch (adError) {
-				log(`⚠️ Legit ad clicking error: ${adError.message}`, windowIndex);
+		if (isDirectLinkOnly) {
+			// Direct link mode - just visit the page and simulate user behavior
+			if (remainingTime > 5) {
+				log(`⏳ Direct link session for ${remainingTime}s...`, windowIndex);
+				await visitDirectLink(page, windowIndex, targetURL, remainingTime - 2);
 			}
-		}
+		} else {
+			// Regular mode - more focus on legit ad clicking
+			let legitAdTime = Math.min(25, remainingTime * 0.6); // 60% for legit ad clicking
+			let scrollTime = remainingTime - legitAdTime - 3; // Leave buffer
+			
+			if (remainingTime > 10) {
+				log(`⏳ Waiting 3s for ads to load...`, windowIndex);
+				await page.waitForTimeout(3000);
+				remainingTime -= 3;
+			}
 
-		// Phase 2: Natural browsing simulation
-		if (scrollTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
-			log(`📜 Phase 2: Natural browsing simulation for ${scrollTime}s`, windowIndex);
-			try {
-				await simulateHumanScroll(page, scrollTime, windowIndex, strictTimeoutId);
-			} catch (scrollError) {
-				log(`⚠️ Browsing simulation error: ${scrollError.message}`, windowIndex);
+			// Phase 1: LEGIT ad detection and clicking focused on ProfitableRate & HighPerformance
+			if (legitAdTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
+				log(`🎯 Phase 1: LEGIT ad clicking for ${legitAdTime}s`, windowIndex);
+				try {
+					await detectAndClickProfitableRateAds(page, windowIndex, legitAdTime);
+				} catch (adError) {
+					log(`⚠️ Legit ad clicking error: ${adError.message}`, windowIndex);
+				}
+			}
+
+			// Phase 2: Natural browsing simulation
+			if (scrollTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
+				log(`📜 Phase 2: Natural browsing simulation for ${scrollTime}s`, windowIndex);
+				try {
+					await simulateHumanScroll(page, scrollTime, windowIndex, strictTimeoutId);
+				} catch (scrollError) {
+					log(`⚠️ Browsing simulation error: ${scrollError.message}`, windowIndex);
+				}
 			}
 		}
 
@@ -704,7 +824,7 @@ async function processWindow(
 		// Only log completion if we haven't been closed by timeout and not already completed
 		if (page && !page.isClosed() && !isCompleted) {
 			isCompleted = true;
-			log(`✅ Profile ${cycleSpecificIndex} (Cycle ${cycle}) completed LEGIT session (${completedWindows + 1}/${totalWindows})`, windowIndex);
+			log(`✅ Profile ${cycleSpecificIndex} (Cycle ${cycle}) completed ${isDirectLinkOnly ? 'DIRECT LINK' : 'LEGIT'} session (${completedWindows + 1}/${totalWindows})`, windowIndex);
 			updateProfileStatus(windowIndex, 'success');
 			successWindows++;
 		}
@@ -773,23 +893,31 @@ async function runAutomation(config) {
 			profilesAtOnce = 1,
 			timeout = 30,
 			minWaitTime = 45,
-			maxWaitTime = 55
+			maxWaitTime = 55,
+			directLinkViews = 0, // New parameter for direct link views
+			directLinkURL = '' // New parameter for direct link URL
 		} = config;
 
+		const isDirectLinkMode = directLinkViews > 0 && directLinkURL;
+		
 		log('🚀 Starting LEGIT automation with focused ad clicking:', null);
 		log(`   URL: ${url}`, null);
 		log(`   Proxy: ${proxyURL}`, null);
 		log(`   Browser: ${browser}`, null);
-		log(`   Cycles: ${openCount}`, null);
-		log(`   Profiles per cycle: ${profilesAtOnce}`, null);
+		if (isDirectLinkMode) {
+			log(`   🎯 DIRECT LINK MODE: ${directLinkViews} views to ${directLinkURL}`, null);
+		} else {
+			log(`   Cycles: ${openCount}`, null);
+			log(`   Profiles per cycle: ${profilesAtOnce}`, null);
+		}
 		log(`   Timeout: ${timeout}s`, null);
 		log(`   Wait time: ${minWaitTime}-${maxWaitTime}s`, null);
 
 		// Extract target URL from proxy URL if needed
-		let targetURL = url;
+		let targetURL = isDirectLinkMode ? directLinkURL : url;
 		if (url.includes('api.scrape.do') && url.includes('url=')) {
 			const urlMatch = url.match(/url=([^&]+)/);
-			if (urlMatch) {
+			if (urlMatch && !isDirectLinkMode) {
 				targetURL = decodeURIComponent(urlMatch[1]);
 				log(`🎯 Extracted target URL: ${targetURL}`, null);
 			}
@@ -798,8 +926,19 @@ async function runAutomation(config) {
 		// Clear previous profile logs
 		clearProfileLogs();
 
-		const totalCycles = Math.max(1, Math.min(parseInt(openCount), 20));
-		profilesPerCycle = Math.max(1, Math.min(parseInt(profilesAtOnce), 10));
+		let totalCycles, profilesPerCycle;
+		
+		if (isDirectLinkMode) {
+			// Direct link mode: treat each view as a separate "profile"
+			totalCycles = 1;
+			profilesPerCycle = Math.max(1, Math.min(parseInt(directLinkViews), 50)); // Max 50 concurrent views
+			log(`📊 DIRECT LINK MODE: ${profilesPerCycle} concurrent views`, null);
+		} else {
+			// Regular automation mode
+			totalCycles = Math.max(1, Math.min(parseInt(openCount), 20));
+			profilesPerCycle = Math.max(1, Math.min(parseInt(profilesAtOnce), 10));
+			log(`📊 Regular automation: ${totalCycles} cycles × ${profilesPerCycle} profiles`, null);
+		}
 
 		totalWindows = totalCycles * profilesPerCycle;
 		completedWindows = 0;
@@ -812,7 +951,7 @@ async function runAutomation(config) {
 		// Reset stop state at the beginning
 		resetStopState();
 
-		log(`📊 Total profiles to run: ${totalWindows} (${totalCycles} cycles × ${profilesPerCycle} profiles)`, null);
+		log(`📊 Total profiles to run: ${totalWindows}`, null);
 
 		// Run automation cycles
 		for (let cycle = 1; cycle <= totalCycles; cycle++) {
@@ -828,7 +967,8 @@ async function runAutomation(config) {
 			// Clear logs from previous cycle to start fresh
 			clearProfileLogs();
 
-			log(`🔄 Starting Cycle ${cycle}/${totalCycles} with LEGIT ad clicking`);
+			const modeText = isDirectLinkMode ? 'DIRECT LINK views' : 'LEGIT ad clicking';
+			log(`🔄 Starting Cycle ${cycle}/${totalCycles} with ${modeText}`);
 
 			// Create promises for all profiles in this cycle
 			const waitTimes = getRandomWaitTimes(profilesPerCycle, minWaitTime, maxWaitTime);
@@ -843,7 +983,8 @@ async function runAutomation(config) {
 					proxyURL,
 					waitTimes[i],
 					cycle,
-					timeout
+					timeout,
+					isDirectLinkMode // Pass the direct link mode flag
 				)
 			);
 
@@ -855,7 +996,8 @@ async function runAutomation(config) {
 				break;
 			}
 
-			log(`✅ Cycle ${cycle} completed with LEGIT ad interactions`);
+			const cycleText = isDirectLinkMode ? 'direct link views' : 'LEGIT ad interactions';
+			log(`✅ Cycle ${cycle} completed with ${cycleText}`);
 
 			// Small delay between cycles (except for the last cycle)
 			if (cycle < totalCycles && !shouldStop) {
@@ -867,7 +1009,8 @@ async function runAutomation(config) {
 		if (shouldStop) {
 			log(`🛑 Automation stopped by user request`);
 		} else {
-			log(`🎉 All ${totalCycles} cycles completed with LEGIT ad clicking!`);
+			const completionText = isDirectLinkMode ? 'direct link views' : 'LEGIT ad clicking';
+			log(`🎉 All ${totalCycles} cycles completed with ${completionText}!`);
 		}
 
 		// Reset automation state
