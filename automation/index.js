@@ -44,6 +44,157 @@ function getCycleSpecificIndex(globalIndex, cycle, profilesPerCycle) {
 	return ((globalIndex - 1) % profilesPerCycle) + 1;
 }
 
+// Function to simulate random clicks on the page
+async function simulateRandomClicks(page, profileIndex, duration = 10) {
+	if (!page || page.isClosed()) return;
+	
+	log(`🖱️ Starting random click simulation for ${duration}s`, profileIndex);
+	
+	try {
+		// Wait for page to be fully interactive
+		await page.waitForLoadState('networkidle', { timeout: 30000 });
+		
+		const endTime = Date.now() + (duration * 1000);
+		let clickCount = 0;
+		
+		while (Date.now() < endTime && !page.isClosed()) {
+			try {
+				// Get clickable elements (avoid ads for now to prevent redirects)
+				const clickableElements = await page.evaluate(() => {
+					const elements = [];
+					const selectors = [
+						'p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+						'article', 'section', 'main', 'aside', 'header', 'footer'
+					];
+					
+					selectors.forEach(selector => {
+						const found = document.querySelectorAll(selector);
+						found.forEach(el => {
+							const rect = el.getBoundingClientRect();
+							const style = window.getComputedStyle(el);
+							if (rect.width > 50 && rect.height > 20 && 
+								style.display !== 'none' && 
+								style.visibility !== 'hidden' &&
+								rect.top >= 0 && rect.top <= window.innerHeight) {
+								elements.push({
+									x: rect.left + rect.width / 2,
+									y: rect.top + rect.height / 2,
+									width: rect.width,
+									height: rect.height
+								});
+							}
+						});
+					});
+					return elements;
+				});
+				
+				if (clickableElements.length > 0) {
+					const randomElement = clickableElements[Math.floor(Math.random() * clickableElements.length)];
+					
+					// Add some randomization to click position
+					const x = randomElement.x + (Math.random() * 20 - 10);
+					const y = randomElement.y + (Math.random() * 20 - 10);
+					
+					// Move mouse to position smoothly
+					await page.mouse.move(x, y, { steps: 5 + Math.random() * 10 });
+					await page.waitForTimeout(200 + Math.random() * 500);
+					
+					// Random chance to actually click
+					if (Math.random() < 0.3) {
+						await page.mouse.click(x, y);
+						clickCount++;
+						log(`🎯 Clicked at (${Math.round(x)}, ${Math.round(y)}) - Click #${clickCount}`, profileIndex);
+						
+						// Wait a bit after clicking
+						await page.waitForTimeout(1000 + Math.random() * 2000);
+					} else {
+						log(`👆 Hovered at (${Math.round(x)}, ${Math.round(y)})`, profileIndex);
+						await page.waitForTimeout(500 + Math.random() * 1000);
+					}
+				}
+				
+				// Random pause between actions
+				await page.waitForTimeout(2000 + Math.random() * 3000);
+				
+			} catch (clickError) {
+				log(`⚠️ Click simulation error: ${clickError.message}`, profileIndex);
+				await page.waitForTimeout(1000);
+			}
+		}
+		
+		log(`✅ Click simulation completed - ${clickCount} clicks made`, profileIndex);
+		
+	} catch (error) {
+		log(`❌ Random click simulation failed: ${error.message}`, profileIndex);
+	}
+}
+
+// Function to wait for complete page load including ads
+async function waitForCompletePageLoad(page, profileIndex, timeout = 45) {
+	if (!page || page.isClosed()) return false;
+	
+	log(`⏳ Waiting for complete page load (${timeout}s timeout)...`, profileIndex);
+	
+	try {
+		// Wait for network to be idle
+		await page.waitForLoadState('networkidle', { timeout: timeout * 1000 });
+		log(`✅ Network idle achieved`, profileIndex);
+		
+		// Additional wait for dynamic content and ads
+		await page.waitForTimeout(3000);
+		
+		// Check if common ad containers are present and try to load them
+		await page.evaluate(() => {
+			return new Promise((resolve) => {
+				// Common ad container selectors
+				const adSelectors = [
+					'.ads', '.ad', '.advertisement', '.google-ad',
+					'[class*="ad-"]', '[id*="ad-"]', '[class*="ads-"]', '[id*="ads-"]',
+					'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
+					'ins.adsbygoogle', '.adsbygoogle'
+				];
+				
+				let loadedAds = 0;
+				let totalAds = 0;
+				
+				adSelectors.forEach(selector => {
+					const elements = document.querySelectorAll(selector);
+					totalAds += elements.length;
+					
+					elements.forEach(el => {
+						if (el.offsetHeight > 0 && el.offsetWidth > 0) {
+							loadedAds++;
+						}
+					});
+				});
+				
+				console.log(`Found ${totalAds} ad elements, ${loadedAds} visible`);
+				
+				// Wait a bit more for ads to load
+				setTimeout(resolve, 2000);
+			});
+		});
+		
+		// Check page readiness
+		const isReady = await page.evaluate(() => {
+			return document.readyState === 'complete' && 
+				   window.jQuery ? window.jQuery.active === 0 : true;
+		});
+		
+		if (isReady) {
+			log(`✅ Page fully loaded with all resources`, profileIndex);
+			return true;
+		} else {
+			log(`⚠️ Page may not be fully loaded`, profileIndex);
+			return true; // Continue anyway
+		}
+		
+	} catch (loadError) {
+		log(`⚠️ Page load timeout or error: ${loadError.message}`, profileIndex);
+		return true; // Continue even if timeout
+	}
+}
+
 // Function to process a single window
 async function processWindow(
 	windowIndex,
@@ -83,13 +234,13 @@ async function processWindow(
 
 		log(`🌐 Using browser: ${browserChoice.name} for Profile ${cycleSpecificIndex}`, windowIndex);
 
-		// Generate fingerprint
+		// Generate comprehensive fingerprint
 		let fingerprint;
 		try {
 			fingerprint = await generateFingerprint(proxyURL, browserChoice.name, 'desktop');
-			log(`🔐 Generated fingerprint for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`🔐 Generated comprehensive fingerprint for Profile ${cycleSpecificIndex}`, windowIndex);
 		} catch (fingerprintError) {
-			log(`⚠️ Fingerprint generation failed, using defaults: ${fingerprintError.message}`, windowIndex);
+			log(`⚠️ Fingerprint generation failed, using enhanced defaults: ${fingerprintError.message}`, windowIndex);
 			fingerprint = {
 				userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 				screen: { width: 1920, height: 1080 },
@@ -109,22 +260,61 @@ async function processWindow(
 			return;
 		}
 
-		// Launch browser with error handling
+		// Launch browser with human-like configuration
 		try {
 			log(`🌐 Launching ${browserChoice.name} browser for Profile ${cycleSpecificIndex}`, windowIndex);
+			
+			// Human-like browser arguments - allow ads and full rendering
+			const browserArgs = [
+				'--no-first-run',
+				'--no-default-browser-check',
+				'--disable-blink-features=AutomationControlled',
+				'--disable-features=VizDisplayCompositor',
+				'--disable-background-networking',
+				'--disable-background-timer-throttling',
+				'--disable-backgrounding-occluded-windows',
+				'--disable-renderer-backgrounding',
+				'--disable-field-trial-config',
+				'--disable-hang-monitor',
+				'--disable-ipc-flooding-protection',
+				'--disable-popup-blocking', // Allow popups (important for some ads)
+				'--disable-prompt-on-repost',
+				'--disable-sync',
+				'--metrics-recording-only',
+				'--no-report-upload',
+				'--safebrowsing-disable-auto-update',
+				'--enable-automation',
+				'--password-store=basic',
+				'--use-mock-keychain',
+				// Enable hardware acceleration and GPU for better rendering
+				'--enable-gpu',
+				'--enable-accelerated-2d-canvas',
+				'--enable-accelerated-jpeg-decoding',
+				'--enable-accelerated-mjpeg-decode',
+				'--enable-accelerated-video-decode',
+				// Allow all content including ads
+				'--disable-web-security', // Allow cross-origin requests
+				'--disable-features=TranslateUI',
+				'--disable-extensions',
+				'--allow-running-insecure-content',
+				// Performance optimizations
+				'--max_old_space_size=4096',
+				// Allow geolocation and notifications
+				'--use-fake-ui-for-media-stream',
+				'--use-fake-device-for-media-stream',
+				// Make it look more human
+				'--disable-dev-shm-usage',
+				'--disable-software-rasterizer',
+			];
+
 			browserInstance = await browserChoice.launcher.launch({
 				headless: false,
-				args: [
-					'--no-sandbox',
-					'--disable-setuid-sandbox',
-					'--disable-dev-shm-usage',
-					'--disable-accelerated-2d-canvas',
-					'--no-first-run',
-					'--no-zygote',
-					'--single-process',
-					'--disable-gpu'
-				]
+				args: browserArgs,
+				ignoreDefaultArgs: ['--enable-automation'], // Remove automation flags
+				executablePath: undefined, // Use default
+				slowMo: 50 + Math.random() * 100 // Add slight delay to actions
 			});
+			
 			log(`✅ Browser launched successfully for Profile ${cycleSpecificIndex}`, windowIndex);
 		} catch (launchError) {
 			log(`❌ Browser launch failed for Profile ${cycleSpecificIndex}: ${launchError.message}`, windowIndex);
@@ -149,17 +339,38 @@ async function processWindow(
 		// Add to active browsers for stop functionality
 		activeBrowsers.push(browserInstance);
 
-		// Create browser context
+		// Create browser context with comprehensive settings
 		try {
-			context = await browserInstance.newContext({
+			const contextOptions = {
 				userAgent: fingerprint.userAgent,
 				viewport: fingerprint.screen,
 				locale: fingerprint.browserLanguages[0],
 				timezoneId: fingerprint.timezone,
 				deviceScaleFactor: fingerprint.deviceScaleFactor || 1,
 				isMobile: fingerprint.isMobile || false,
-				hasTouch: fingerprint.hasTouch || false
-			});
+				hasTouch: fingerprint.hasTouch || false,
+				// Enable all permissions to look human
+				permissions: ['geolocation', 'notifications'],
+				geolocation: fingerprint.geolocation || { latitude: 40.7128, longitude: -74.0060 }, // NYC default
+				// Accept all cookies
+				acceptDownloads: true,
+				// Enable JavaScript
+				javaScriptEnabled: true,
+				// Extra HTTP headers
+				extraHTTPHeaders: {
+					'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+					'Accept-Language': fingerprint.browserLanguages.join(',') + ';q=0.9',
+					'Accept-Encoding': 'gzip, deflate, br',
+					'Cache-Control': 'max-age=0',
+					'Sec-Fetch-Dest': 'document',
+					'Sec-Fetch-Mode': 'navigate',
+					'Sec-Fetch-Site': 'none',
+					'Sec-Fetch-User': '?1',
+					'Upgrade-Insecure-Requests': '1',
+				}
+			};
+			
+			context = await browserInstance.newContext(contextOptions);
 			log(`📄 Browser context created for Profile ${cycleSpecificIndex}`, windowIndex);
 		} catch (contextError) {
 			log(`❌ Context creation failed for Profile ${cycleSpecificIndex}: ${contextError.message}`, windowIndex);
@@ -179,6 +390,10 @@ async function processWindow(
 		// Create new page
 		try {
 			page = await context.newPage();
+			
+			// Set additional page properties
+			await page.setViewportSize(fingerprint.screen);
+			
 			log(`📃 New page created for Profile ${cycleSpecificIndex}`, windowIndex);
 		} catch (pageError) {
 			log(`❌ Page creation failed for Profile ${cycleSpecificIndex}: ${pageError.message}`, windowIndex);
@@ -187,15 +402,15 @@ async function processWindow(
 			return;
 		}
 
-		// Inject fingerprint scripts
+		// Inject comprehensive fingerprint scripts
 		try {
 			await injectFingerprint(page, fingerprint);
-			log(`🔧 Fingerprint injected for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`🔧 Comprehensive fingerprint injected for Profile ${cycleSpecificIndex}`, windowIndex);
 		} catch (injectError) {
 			log(`⚠️ Fingerprint injection failed for Profile ${cycleSpecificIndex}: ${injectError.message}`, windowIndex);
 		}
 
-		// Navigate to the page with proper error handling
+		// Navigate to the page with comprehensive error handling
 		try {
 			// Check if stop was requested before starting navigation
 			if (shouldStop) {
@@ -207,17 +422,27 @@ async function processWindow(
 
 			log(`🌐 Loading website for Profile ${cycleSpecificIndex}: ${combinedURL}`, windowIndex);
 
-			// Navigate with timeout
+			// Navigate with extended timeout for full loading
 			await page.goto(combinedURL, {
 				waitUntil: 'domcontentloaded',
-				timeout: timeout * 1000
+				timeout: (timeout + 15) * 1000 // Extended timeout
 			});
 
-			log(`✅ Page loaded successfully for Profile ${cycleSpecificIndex}`, windowIndex);
+			log(`✅ Initial page load completed for Profile ${cycleSpecificIndex}`, windowIndex);
+
+			// Wait for complete page load including all resources and ads
+			const loadSuccess = await waitForCompletePageLoad(page, windowIndex, 30);
+			
+			if (loadSuccess) {
+				log(`🎉 Website fully loaded for Profile ${cycleSpecificIndex}`, windowIndex);
+			} else {
+				log(`⚠️ Website loaded with warnings for Profile ${cycleSpecificIndex}`, windowIndex);
+			}
+
 		} catch (navError) {
 			let errorMessage = navError.message;
 			if (errorMessage.includes('Timeout')) {
-				errorMessage = `❌ Page load timeout (${timeout}s) - closing profile`;
+				errorMessage = `❌ Page load timeout (${timeout + 15}s) - closing profile`;
 			} else if (errorMessage.includes('net::ERR_')) {
 				errorMessage = `❌ Network error: Unable to connect`;
 			} else if (errorMessage.includes('ERR_NAME_NOT_RESOLVED')) {
@@ -284,22 +509,40 @@ async function processWindow(
 			}
 		}, waitTime * 1000);
 
-		// Perform scrolling and user simulation
-		let usableScrollTime = waitTime;
-		if (usableScrollTime > 10) {
-			log(`⏳ Waiting 5s before starting scroll simulation...`, windowIndex);
+		// Calculate time distribution
+		let remainingTime = waitTime;
+		let clickTime = Math.min(10, remainingTime * 0.3); // 30% for clicking, max 10s
+		let scrollTime = remainingTime - clickTime - 5; // Leave 5s buffer
+		
+		if (remainingTime > 15) {
+			log(`⏳ Waiting 5s before starting interactions...`, windowIndex);
 			await page.waitForTimeout(5000);
-			usableScrollTime -= 5;
+			remainingTime -= 5;
 		}
 
-		// Only attempt scrolling if page is still available and not stopped
-		if (page && !page.isClosed() && !shouldStop && !isCompleted) {
+		// Phase 1: Random clicking and interaction
+		if (clickTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
+			log(`🎯 Phase 1: Random clicking for ${clickTime}s`, windowIndex);
 			try {
-				await simulateHumanScroll(page, usableScrollTime, windowIndex, strictTimeoutId);
-				await page.waitForTimeout(1000);
+				await simulateRandomClicks(page, windowIndex, clickTime);
+			} catch (clickError) {
+				log(`⚠️ Click simulation error: ${clickError.message}`, windowIndex);
+			}
+		}
+
+		// Phase 2: Scroll simulation
+		if (scrollTime > 0 && page && !page.isClosed() && !shouldStop && !isCompleted) {
+			log(`📜 Phase 2: Scroll simulation for ${scrollTime}s`, windowIndex);
+			try {
+				await simulateHumanScroll(page, scrollTime, windowIndex, strictTimeoutId);
 			} catch (scrollError) {
 				log(`⚠️ Scroll simulation error: ${scrollError.message}`, windowIndex);
 			}
+		}
+
+		// Final wait
+		if (page && !page.isClosed() && !shouldStop && !isCompleted) {
+			await page.waitForTimeout(1000);
 		}
 
 		// Clear the timeout if we complete before time expires
@@ -380,7 +623,7 @@ async function runAutomation(config) {
 			maxWaitTime = 55
 		} = config;
 
-		log('🚀 Starting automation with config:', null);
+		log('🚀 Starting enhanced automation with config:', null);
 		log(`   URL: ${url}`, null);
 		log(`   Proxy: ${proxyURL}`, null);
 		log(`   Browser: ${browser}`, null);
