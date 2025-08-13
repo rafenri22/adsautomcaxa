@@ -1,5 +1,5 @@
 // utils/helpers.js
-const { chromium, firefox, webkit } = require('playwright');
+const { chromium, webkit } = require('playwright'); // Only Chrome and Edge (webkit for mobile)
 
 const logs = [];
 const profileLogs = new Map(); // Track logs for each profile
@@ -164,24 +164,25 @@ function shuffleArray(arr) {
 }
 
 function getRandomBrowser() {
+	// Only Chrome and Edge (using chromium and webkit)
 	const browsers = [
-		{ name: 'chromium', launcher: chromium },
-		{ name: 'firefox', launcher: firefox },
-		{ name: 'webkit', launcher: webkit }
+		{ name: 'chromium', launcher: chromium }, // Chrome
+		{ name: 'webkit', launcher: webkit }      // Edge/Safari
 	];
 	return browsers[Math.floor(Math.random() * browsers.length)];
 }
 
 function getBrowserByName(name) {
-	switch (name) {
+	switch (name.toLowerCase()) {
 		case 'chromium':
+		case 'chrome':
 			return { name: 'chromium', launcher: chromium };
-		case 'firefox':
-			return { name: 'firefox', launcher: firefox };
 		case 'webkit':
+		case 'edge':
+		case 'safari':
 			return { name: 'webkit', launcher: webkit };
 		default:
-			return null;
+			return { name: 'chromium', launcher: chromium }; // Default to Chrome
 	}
 }
 

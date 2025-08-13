@@ -39,7 +39,20 @@ function generateGeolocationForTimezone(timezone) {
 }
 
 async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
-	const screenProfiles = [
+	// Enhanced device category support
+	const isMobile = deviceCategory === 'mobile' || Math.random() < 0.3; // 30% mobile traffic
+	
+	const mobileScreenProfiles = [
+		{ width: 375, height: 667 }, // iPhone SE
+		{ width: 375, height: 812 }, // iPhone X/11/12/13 mini
+		{ width: 414, height: 896 }, // iPhone 11/XR
+		{ width: 428, height: 926 }, // iPhone 12/13/14 Pro Max
+		{ width: 360, height: 640 }, // Android standard
+		{ width: 412, height: 915 }, // Pixel
+		{ width: 384, height: 854 }  // Samsung Galaxy
+	];
+	
+	const desktopScreenProfiles = [
 		{ width: 1920, height: 1080 },
 		{ width: 1366, height: 768 },
 		{ width: 1536, height: 864 },
@@ -50,22 +63,24 @@ async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
 		{ width: 3840, height: 2160 }  // 4K
 	];
 	
+	const screen = isMobile ? 
+		mobileScreenProfiles[Math.floor(Math.random() * mobileScreenProfiles.length)] :
+		desktopScreenProfiles[Math.floor(Math.random() * desktopScreenProfiles.length)];
+	
 	const languageProfiles = [
 		['en-US', 'en'],
 		['en-GB', 'en'],
-		['fr-FR', 'fr', 'en'],
-		['de-DE', 'de', 'en'],
-		['es-ES', 'es', 'en'],
-		['it-IT', 'it', 'en'],
-		['pt-BR', 'pt', 'en'],
-		['nl-NL', 'nl', 'en'],
-		['ru-RU', 'ru', 'en'],
-		['ja-JP', 'ja', 'en'],
-		['ko-KR', 'ko', 'en'],
+		['id-ID', 'id', 'en'], // Indonesian
+		['ms-MY', 'ms', 'en'], // Malaysian  
+		['th-TH', 'th', 'en'], // Thai
+		['vi-VN', 'vi', 'en'], // Vietnamese
 		['zh-CN', 'zh', 'en']
 	];
 	
-	const fontPool = [
+	const fontPool = isMobile ? [
+		'Arial', 'Helvetica', 'Times New Roman', 'Times', 'Courier New',
+		'Verdana', 'Georgia', 'Trebuchet MS', 'Tahoma', 'Impact'
+	] : [
 		'Arial', 'Helvetica', 'Times New Roman', 'Times', 'Courier New', 'Courier',
 		'Verdana', 'Georgia', 'Palatino', 'Garamond', 'Bookman', 'Comic Sans MS',
 		'Trebuchet MS', 'Arial Black', 'Impact', 'Lucida Sans Unicode', 
@@ -73,33 +88,33 @@ async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
 		'Brush Script MT', 'Luminari', 'Chalkduster'
 	];
 	
-	const webGLList = [
+	const webGLList = isMobile ? [
+		{ vendor: 'ARM', renderer: 'Mali-G78 MP14' },
+		{ vendor: 'ARM', renderer: 'Mali-G77 MP11' },
+		{ vendor: 'Qualcomm', renderer: 'Adreno (TM) 640' },
+		{ vendor: 'Qualcomm', renderer: 'Adreno (TM) 650' },
+		{ vendor: 'Apple', renderer: 'Apple A15 GPU' },
+		{ vendor: 'Apple', renderer: 'Apple A14 GPU' }
+	] : [
 		{ vendor: 'Intel Inc.', renderer: 'Intel Iris Pro OpenGL Engine' },
 		{ vendor: 'NVIDIA Corporation', renderer: 'NVIDIA GeForce RTX 3070/PCIe/SSE2' },
 		{ vendor: 'NVIDIA Corporation', renderer: 'NVIDIA GeForce RTX 3060/PCIe/SSE2' },
-		{ vendor: 'NVIDIA Corporation', renderer: 'NVIDIA GeForce GTX 1660/PCIe/SSE2' },
 		{ vendor: 'AMD', renderer: 'AMD Radeon Pro 5500 XT OpenGL Engine' },
-		{ vendor: 'AMD', renderer: 'AMD Radeon RX 580 Series' },
 		{ vendor: 'Intel Inc.', renderer: 'Intel HD Graphics 620' },
-		{ vendor: 'Intel Inc.', renderer: 'Intel UHD Graphics 630' },
-		{ vendor: 'Apple', renderer: 'Apple M1 Pro' },
-		{ vendor: 'Apple', renderer: 'Apple M1 Max' }
+		{ vendor: 'Apple', renderer: 'Apple M1 Pro' }
 	];
 
 	const timezones = [
-		'America/New_York', 'America/Los_Angeles', 'America/Chicago', 'America/Denver',
-		'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid',
-		'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Singapore', 'Asia/Kolkata',
-		'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland'
+		'Asia/Jakarta', 'Asia/Singapore', 'Asia/Bangkok', 'Asia/Manila',
+		'America/New_York', 'America/Los_Angeles', 'Europe/London'
 	];
 
 	let timezone = timezones[Math.floor(Math.random() * timezones.length)];
-	let countryCode = 'US'; // Default
+	let countryCode = 'ID'; // Default to Indonesia
 	
-	// Try to get timezone and country from proxy, but don't fail if it doesn't work
+	// Try to get timezone and country from proxy
 	if (proxyURL && proxyURL.trim()) {
 		try {
-			// Extract IP from proxy URL if possible
 			const urlMatch = proxyURL.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
 			if (urlMatch) {
 				const ip = urlMatch[1];
@@ -109,7 +124,7 @@ async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
 				});
 				if (geo.data && geo.data.timezone) {
 					timezone = geo.data.timezone;
-					countryCode = geo.data.countryCode || 'US';
+					countryCode = geo.data.countryCode || 'ID';
 					console.log(`🌍 Location from IP ${ip}: ${geo.data.city}, ${geo.data.regionName}, ${geo.data.country}`);
 				}
 			}
@@ -118,9 +133,8 @@ async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
 		}
 	}
 
-	const screen = screenProfiles[Math.floor(Math.random() * screenProfiles.length)];
 	const languages = languageProfiles[Math.floor(Math.random() * languageProfiles.length)];
-	const dpr = [1, 1.25, 1.5, 2][Math.floor(Math.random() * 4)];
+	const dpr = isMobile ? [1, 2, 3][Math.floor(Math.random() * 3)] : [1, 1.25, 1.5, 2][Math.floor(Math.random() * 4)];
 	const webgl = webGLList[Math.floor(Math.random() * webGLList.length)];
 	const geolocation = generateGeolocationForTimezone(timezone);
 
@@ -128,19 +142,20 @@ async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
 	try {
 		uaMeta = await generateUserAgent({
 			browserName: browserName || 'Chrome',
-			deviceCategory: deviceCategory || 'desktop',
-			platform: 'Win32',
+			deviceCategory: isMobile ? 'mobile' : 'desktop',
+			platform: isMobile ? 'mobile' : 'Win32',
 			language: languages[0]
 		});
 	} catch (uaError) {
 		console.warn('⚠️ User agent generation failed, using fallback:', uaError.message);
-		// Enhanced fallback user agent
-		const fallbackAgents = [
+		
+		// Enhanced fallback with mobile support
+		const fallbackAgents = isMobile ? [
+			'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.0.0 Mobile/15E148 Safari/604.1',
+			'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+		] : [
 			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-			'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
-			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
+			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
 		];
 		
 		const selectedUA = fallbackAgents[Math.floor(Math.random() * fallbackAgents.length)];
@@ -148,35 +163,27 @@ async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
 		uaMeta = {
 			ua: selectedUA,
 			appVersion: selectedUA.split('Mozilla/')[1],
-			platform: selectedUA.includes('Windows') ? 'Win32' : selectedUA.includes('Macintosh') ? 'MacIntel' : 'Linux x86_64',
-			vendor: selectedUA.includes('Chrome') ? 'Google Inc.' : selectedUA.includes('Firefox') ? '' : 'Apple Computer, Inc.',
-			os: selectedUA.includes('Windows') ? 'Windows' : selectedUA.includes('Mac') ? 'Mac' : 'Linux',
-			browser: selectedUA.includes('Chrome') ? 'Chrome' : selectedUA.includes('Firefox') ? 'Firefox' : 'Safari'
+			platform: isMobile ? (selectedUA.includes('iPhone') ? 'iPhone' : 'Linux armv7l') : 'Win32',
+			vendor: selectedUA.includes('Edg') ? 'Microsoft Corporation' : 'Google Inc.',
+			os: isMobile ? (selectedUA.includes('iPhone') ? 'iOS' : 'Android') : 'Windows',
+			browser: selectedUA.includes('Edg') ? 'Edge' : 'Chrome',
+			isMobile: isMobile,
+			hasTouch: isMobile
 		};
 	}
 
-	// Enhanced plugin simulation
-	const plugins = [
+	// Enhanced plugin simulation for mobile/desktop
+	const plugins = isMobile ? [
+		// Mobile plugins are limited
+	] : [
 		{ name: 'Chrome PDF Plugin', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
 		{ name: 'Chrome PDF Viewer', description: 'PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
 		{ name: 'Native Client', description: 'Native Client Executable', filename: 'internal-nacl-plugin' }
 	];
 
-	// Add Flash plugin occasionally for realism (even though deprecated)
-	if (Math.random() < 0.3) {
-		plugins.push({
-			name: 'Shockwave Flash',
-			description: 'Shockwave Flash 32.0 r0',
-			filename: 'pepflashplayer.dll'
-		});
-	}
-
-	// Enhanced MIME types
-	const mimeTypes = [
+	const mimeTypes = isMobile ? [] : [
 		{ type: 'application/pdf', description: 'PDF Viewer', suffixes: 'pdf' },
-		{ type: 'application/x-google-chrome-pdf', description: 'Chrome PDF Viewer', suffixes: 'pdf' },
-		{ type: 'application/x-nacl', description: 'Native Client Executable', suffixes: 'nexe' },
-		{ type: 'application/x-pnacl', description: 'Portable Native Client Executable', suffixes: 'pexe' }
+		{ type: 'application/x-google-chrome-pdf', description: 'Chrome PDF Viewer', suffixes: 'pdf' }
 	];
 
 	return {
@@ -193,15 +200,15 @@ async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
 			colorDepth: 24, 
 			pixelDepth: 24,
 			availWidth: screen.width,
-			availHeight: screen.height - 40 // Account for taskbar
+			availHeight: screen.height - (isMobile ? 0 : 40)
 		},
 		devicePixelRatio: dpr,
 		timezone,
 		geolocation,
 		countryCode,
-		fonts: shuffleArray(fontPool).slice(0, 8 + Math.floor(Math.random() * 5)), // 8-12 fonts
-		deviceMemory: [4, 8, 16, 32][Math.floor(Math.random() * 4)],
-		hardwareConcurrency: [2, 4, 6, 8, 12, 16][Math.floor(Math.random() * 6)],
+		fonts: shuffleArray(fontPool).slice(0, 8 + Math.floor(Math.random() * 5)),
+		deviceMemory: isMobile ? [2, 3, 4, 6, 8][Math.floor(Math.random() * 5)] : [4, 8, 16, 32][Math.floor(Math.random() * 4)],
+		hardwareConcurrency: isMobile ? [4, 6, 8][Math.floor(Math.random() * 3)] : [2, 4, 6, 8, 12, 16][Math.floor(Math.random() * 6)],
 		plugins,
 		mimeTypes,
 		webglVendor: webgl.vendor,
@@ -209,21 +216,21 @@ async function generateFingerprint(proxyURL = '', browserName, deviceCategory) {
 		canvasNoise: crypto.randomBytes(16).toString('hex'),
 		audioFingerprint: Math.random().toFixed(16),
 		connection: {
-			effectiveType: ['4g', 'fast-3g', '3g'][Math.floor(Math.random() * 3)],
-			downlink: +(Math.random() * 15 + 5).toFixed(1), // 5-20 Mbps
-			rtt: Math.floor(Math.random() * 50 + 10), // 10-60ms
-			type: ['wifi', 'ethernet', 'cellular'][Math.floor(Math.random() * 3)]
+			effectiveType: isMobile ? ['4g', '3g', 'slow-2g'][Math.floor(Math.random() * 3)] : ['4g', 'fast-3g'][Math.floor(Math.random() * 2)],
+			downlink: isMobile ? +(Math.random() * 10 + 1).toFixed(1) : +(Math.random() * 15 + 5).toFixed(1),
+			rtt: isMobile ? Math.floor(Math.random() * 100 + 20) : Math.floor(Math.random() * 50 + 10),
+			type: isMobile ? 'cellular' : ['wifi', 'ethernet'][Math.floor(Math.random() * 2)]
 		},
 		battery: {
 			charging: Math.random() < 0.7,
-			level: +(Math.random() * 0.7 + 0.2).toFixed(2), // 20%-90%
+			level: +(Math.random() * 0.7 + 0.2).toFixed(2),
 			chargingTime: Math.random() < 0.5 ? Math.floor(Math.random() * 7200) : Infinity,
-			dischargingTime: Math.floor(Math.random() * 28800 + 3600) // 1-8 hours
+			dischargingTime: Math.floor(Math.random() * 28800 + 3600)
 		},
-		maxTouchPoints: 0,
-		isMobile: false,
-		hasTouch: false,
-		doNotTrack: Math.random() < 0.3 ? '1' : null, // 30% enable DNT
+		maxTouchPoints: isMobile ? [5, 10][Math.floor(Math.random() * 2)] : 0,
+		isMobile: isMobile,
+		hasTouch: isMobile,
+		doNotTrack: Math.random() < 0.3 ? '1' : null,
 		cookieEnabled: true,
 		onLine: true
 	};
